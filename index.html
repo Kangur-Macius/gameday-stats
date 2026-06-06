@@ -16,578 +16,463 @@
     body { background: #0d1f15; font-family: 'Segoe UI', sans-serif; }
     input, button, select { font-family: inherit; }
     select option { background: #0a1a0f; color: #fff; }
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      .no-print { display: none !important; }
+      .print-section { page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
     const GK_NAMES = ["", "Yianni", "Luka", "Harry", "Sam", "Kai"];
     const OUTFIELD_NAMES = [
-      "", "Brady", "Nicky", "Sam S", "Sarp", "Johnny", "Jack", "Mani", "Ante",
-      "Roger", "Kaz", "Ben", "Ryan", "Zion", "Hudson", "Andreas", "Raph",
-      "Will", "Jimmy", "Huss", "Aydin"
+      "", "Andreas", "Ante", "Aydin", "Ben", "Brady", "Dimmi", "Hudson",
+      "Huss", "Jack", "Jamie", "Jimmy", "Johnny", "Kaz", "Mani", "Nicky",
+      "Raph", "Roger", "Ryan", "Sam G", "Sam S", "Sarp", "Will", "Zion"
     ];
-
     const FORMATIONS = [
-      "4-3-3", "4-4-2", "4-2-3-1", "4-5-1",
-      "3-5-2", "3-4-3", "5-3-2", "5-4-1",
-      "4-1-4-1", "4-3-2-1", "4-2-2-2"
+      "4-3-3","4-4-2","4-2-3-1","4-5-1",
+      "3-5-2","3-4-3","5-3-2","5-4-1",
+      "4-1-4-1","4-3-2-1","4-2-2-2"
+    ];
+    const OPPOSITION_TEAMS = [
+      "","Sth Melbourne","Altona Magic","Green Gully","Dandy Thunder",
+      "Dandy City","Preston Lions","Oakleigh Cannons","St Albans",
+      "Melbourne City","Heidelberg Utd"
     ];
 
     function getFormationPositions(formation) {
       const parts = formation.split("-").map(Number);
       const labels = [];
       if (parts.length === 4) {
-        const posNames = ["DEF", "MID", "MID", "ATT"];
-        parts.forEach((count, i) => { for (let j = 0; j < count; j++) labels.push(posNames[i]); });
+        const posNames = ["DEF","MID","MID","ATT"];
+        parts.forEach((count,i) => { for(let j=0;j<count;j++) labels.push(posNames[i]); });
       } else {
-        const names = ["DEF", "MID", "ATT"];
-        parts.forEach((count, i) => { for (let j = 0; j < count; j++) labels.push(names[i]); });
+        const names = ["DEF","MID","ATT"];
+        parts.forEach((count,i) => { for(let j=0;j<count;j++) labels.push(names[i]); });
       }
       return labels;
     }
 
-    const makePlayer = (id, number, name = "", role = "outfield") => ({
+    const makePlayer = (id, number, name="", role="outfield") => ({
       id, number, name, role,
-      goals: 0, shots: 0, offtarget: 0, fouls: 0, yellow: 0, red: 0, offsides: 0
+      goals:0, shots:0, offtarget:0, assists:0, fouls:0, yellow:0, red:0, offsides:0
     });
 
     const initialStarting = [
-      makePlayer(1, 1, "", "gk"),
-      ...Array.from({ length: 10 }, (_, i) => makePlayer(i + 2, i + 2, "", "outfield")),
+      makePlayer(1,1,"","gk"),
+      ...Array.from({length:10},(_,i)=>makePlayer(i+2,i+2,"","outfield")),
     ];
     const initialSubs17 = [
-      makePlayer(12, 12, "", "gk"),
-      ...Array.from({ length: 5 }, (_, i) => makePlayer(i + 13, i + 13, "", "outfield")),
+      makePlayer(12,12,"","gk"),
+      ...Array.from({length:5},(_,i)=>makePlayer(i+13,i+13,"","outfield")),
     ];
-    const initialHomePlayers = [...initialStarting, ...initialSubs17];
-    const initialHomeTeamStats = { corners: 0 };
-    const initialAwayTeamStats = { goals: 0, shots: 0, corners: 0, fouls: 0, yellow: 0, red: 0, offsides: 0, subs: 0 };
+    const initialHomePlayers = [...initialStarting,...initialSubs17];
+    const initialHomeTeamStats = { corners:0 };
+    const initialAwayTeamStats = { goals:0,shotsOn:0,shotsOff:0,corners:0,fouls:0,yellow:0,red:0,offsides:0,subs:0 };
 
-    const BG_GREEN = "#1a7a3c";
-    const BG_DARK  = "#0d1f15";
-    const ACCENT   = "#2ecc71";
-    const GOLD     = "#f0c040";
-    const CARD_BG  = "#132b1c";
-    const BORDER   = "#1e4d2b";
+    const BG_GREEN="#1a7a3c", BG_DARK="#0d1f15", ACCENT="#2ecc71", GOLD="#f0c040", CARD_BG="#132b1c", BORDER="#1e4d2b";
 
-    function TapCell({ value, onInc, color = ACCENT }) {
-      const [flash, setFlash] = useState(false);
-      const handleClick = () => { onInc(); setFlash(true); setTimeout(() => setFlash(false), 180); };
-      return (
-        <span onClick={handleClick} style={{
-          display: "inline-block", minWidth: 28, textAlign: "center",
-          fontWeight: 700, color: flash ? "#fff" : color, fontSize: 15,
-          cursor: "pointer", borderRadius: 5, padding: "2px 5px",
-          background: flash ? color : "transparent",
-          transition: "background 0.15s, color 0.15s", userSelect: "none",
-        }}>{value}</span>
-      );
+    function TapCell({value,onInc,color=ACCENT}) {
+      const [flash,setFlash]=useState(false);
+      const click=()=>{onInc();setFlash(true);setTimeout(()=>setFlash(false),180);};
+      return <span onClick={click} style={{display:"inline-block",minWidth:28,textAlign:"center",fontWeight:700,color:flash?"#fff":color,fontSize:15,cursor:"pointer",borderRadius:5,padding:"2px 5px",background:flash?color:"transparent",transition:"background 0.15s,color 0.15s",userSelect:"none"}}>{value}</span>;
     }
 
-    function CardTapCell({ value, onInc, cardColor }) {
-      const [flash, setFlash] = useState(false);
-      const handleClick = () => { onInc(); setFlash(true); setTimeout(() => setFlash(false), 180); };
-      return (
-        <span onClick={handleClick} style={{
-          display: "inline-block", minWidth: 28, textAlign: "center",
-          fontWeight: 700, fontSize: 13, cursor: "pointer", borderRadius: 4,
-          padding: "2px 6px", userSelect: "none",
-          background: value === 0 ? (flash ? cardColor : "transparent") : cardColor,
-          color: value === 0 ? (flash ? "#fff" : "#444") : "#fff",
-          transition: "background 0.15s, color 0.15s",
-        }}>{value}</span>
-      );
+    function CardTapCell({value,onInc,cardColor}) {
+      const [flash,setFlash]=useState(false);
+      const click=()=>{onInc();setFlash(true);setTimeout(()=>setFlash(false),180);};
+      return <span onClick={click} style={{display:"inline-block",minWidth:28,textAlign:"center",fontWeight:700,fontSize:13,cursor:"pointer",borderRadius:4,padding:"2px 6px",userSelect:"none",background:value===0?(flash?cardColor:"transparent"):cardColor,color:value===0?(flash?"#fff":"#444"):"#fff",transition:"background 0.15s,color 0.15s"}}>{value}</span>;
     }
 
-    function ConfirmDialog({ message, onConfirm, onCancel, confirmLabel = "Reset" }) {
+    function ConfirmDialog({message,onConfirm,onCancel,confirmLabel="Reset"}) {
       return (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-        }}>
-          <div style={{
-            background: CARD_BG, border: "2px solid #c0392b", borderRadius: 12,
-            padding: "24px 28px", maxWidth: 300, width: "90%", textAlign: "center"
-          }}>
-            <div style={{ fontSize: 28, marginBottom: 10 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#fff", marginBottom: 6 }}>Are you sure?</div>
-            <div style={{ color: "#aaa", fontSize: 13, marginBottom: 20 }}>{message}</div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button onClick={onCancel} style={{
-                background: "#1a3a26", color: "#aaa", border: `1px solid ${BORDER}`,
-                borderRadius: 7, padding: "8px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14
-              }}>Cancel</button>
-              <button onClick={onConfirm} style={{
-                background: "#c0392b", color: "#fff", border: "none",
-                borderRadius: 7, padding: "8px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14
-              }}>{confirmLabel}</button>
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div style={{background:CARD_BG,border:"2px solid #c0392b",borderRadius:12,padding:"24px 28px",maxWidth:300,width:"90%",textAlign:"center"}}>
+            <div style={{fontSize:28,marginBottom:10}}>⚠️</div>
+            <div style={{fontWeight:700,fontSize:16,color:"#fff",marginBottom:6}}>Are you sure?</div>
+            <div style={{color:"#aaa",fontSize:13,marginBottom:20}}>{message}</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              <button onClick={onCancel} style={{background:"#1a3a26",color:"#aaa",border:`1px solid ${BORDER}`,borderRadius:7,padding:"8px 20px",fontWeight:700,cursor:"pointer",fontSize:14}}>Cancel</button>
+              <button onClick={onConfirm} style={{background:"#c0392b",color:"#fff",border:"none",borderRadius:7,padding:"8px 20px",fontWeight:700,cursor:"pointer",fontSize:14}}>{confirmLabel}</button>
             </div>
           </div>
         </div>
       );
     }
 
-    function SettingsPage({ homePlayers, setHomePlayers, homeTeamName, setHomeTeamName, awayTeamName, setAwayTeamName, isHomeGame, setIsHomeGame, homeFormation, setHomeFormation, awayFormation, setAwayFormation, onClose }) {
-      const [localPlayers, setLocalPlayers] = useState(homePlayers.map(p => ({ ...p })));
-      const [localHome, setLocalHome]       = useState(homeTeamName);
-      const [localAway, setLocalAway]       = useState(awayTeamName);
-      const [localIsHome, setLocalIsHome]   = useState(isHomeGame);
-      const [localHomeFormation, setLocalHomeFormation] = useState(homeFormation);
-      const [localAwayFormation, setLocalAwayFormation] = useState(awayFormation);
-
-      const positionLabels = getFormationPositions(localHomeFormation);
-
-      const updatePlayer = (id, field, val) =>
-        setLocalPlayers(prev => prev.map(p => p.id === id ? { ...p, [field]: val } : p));
-
-      const save = () => {
-        setHomePlayers(localPlayers);
-        setHomeTeamName(localHome);
-        setAwayTeamName(localAway);
-        setIsHomeGame(localIsHome);
-        setHomeFormation(localHomeFormation);
-        setAwayFormation(localAwayFormation);
-        onClose();
-      };
-
-      const inputSt = {
-        background: "#0a1a0f", color: "#fff", border: `1px solid ${BORDER}`,
-        borderRadius: 6, padding: "7px 10px", fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box"
-      };
-      const selectSt = { ...inputSt, cursor: "pointer", appearance: "none", WebkitAppearance: "none" };
-
-      const sectionHeader = label => (
-        <div style={{
-          fontFamily: "'Impact', sans-serif", color: ACCENT, letterSpacing: 3, fontSize: 13,
-          borderBottom: `1px solid ${BORDER}`, paddingBottom: 4, marginBottom: 12, marginTop: 16,
-          textTransform: "uppercase"
-        }}>{label}</div>
-      );
-
-      const starting = localPlayers.slice(0, 11);
-      const benchPlayers = localPlayers.slice(11, 17);
-      const posColors = { GK: GOLD, DEF: "#5dade2", MID: ACCENT, ATT: "#e74c3c", SUB: "#aaa" };
-
-      const PlayerRow = ({ p, i, posLabel }) => {
-        const usedNames = localPlayers
-          .filter(op => op.id !== p.id && op.role !== "gk" && op.name !== "")
-          .map(op => op.name);
-        const availableNames = OUTFIELD_NAMES.filter(n => n === "" || n === p.name || !usedNames.includes(n));
+    function SettingsPage({homePlayers,setHomePlayers,homeTeamName,setHomeTeamName,awayTeamName,setAwayTeamName,isHomeGame,setIsHomeGame,homeFormation,setHomeFormation,awayFormation,setAwayFormation,onClose}) {
+      const [lp,setLp]=useState(homePlayers.map(p=>({...p})));
+      const [lHome,setLHome]=useState(homeTeamName);
+      const [lAway,setLAway]=useState(awayTeamName);
+      const [lIsHome,setLIsHome]=useState(isHomeGame);
+      const [lHF,setLHF]=useState(homeFormation);
+      const [lAF,setLAF]=useState(awayFormation);
+      const posLabels=getFormationPositions(lHF);
+      const upd=(id,f,v)=>setLp(prev=>prev.map(p=>p.id===id?{...p,[f]:v}:p));
+      const save=()=>{setHomePlayers(lp);setHomeTeamName(lHome);setAwayTeamName(lAway);setIsHomeGame(lIsHome);setHomeFormation(lHF);setAwayFormation(lAF);onClose();};
+      const iSt={background:"#0a1a0f",color:"#fff",border:`1px solid ${BORDER}`,borderRadius:6,padding:"7px 10px",fontSize:13,outline:"none",width:"100%",boxSizing:"border-box"};
+      const sSt={...iSt,cursor:"pointer",appearance:"none",WebkitAppearance:"none"};
+      const secH=label=><div style={{fontFamily:"'Impact',sans-serif",color:ACCENT,letterSpacing:3,fontSize:13,borderBottom:`1px solid ${BORDER}`,paddingBottom:4,marginBottom:12,marginTop:16,textTransform:"uppercase"}}>{label}</div>;
+      const starting=lp.slice(0,11), bench=lp.slice(11,17);
+      const posColors={GK:GOLD,DEF:"#5dade2",MID:ACCENT,ATT:"#e74c3c",SUB:"#aaa"};
+      const PlayerRow=({p,i,posLabel})=>{
+        const used=lp.filter(op=>op.id!==p.id&&op.role!=="gk"&&op.name!=="").map(op=>op.name);
+        const avail=OUTFIELD_NAMES.filter(n=>n===""||n===p.name||!used.includes(n));
         return (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            background: i % 2 === 0 ? CARD_BG : "#0e2218",
-            borderRadius: 7, padding: "8px 10px", border: `1px solid ${BORDER}`
-          }}>
-            <input value={p.number} onChange={e => updatePlayer(p.id, "number", e.target.value)}
-              style={{ ...inputSt, width: 44, textAlign: "center", padding: "6px 4px", flexShrink: 0 }} placeholder="#" />
-            <span style={{
-              fontSize: 10, fontWeight: 700, minWidth: 34, textAlign: "center", flexShrink: 0,
-              color: posColors[posLabel] || "#555",
-              background: (posColors[posLabel] || "#555") + "22",
-              borderRadius: 4, padding: "2px 4px"
-            }}>{posLabel}</span>
-            {p.role === "gk" ? (
-              <select value={p.name} onChange={e => updatePlayer(p.id, "name", e.target.value)} style={{ ...selectSt, flex: 1 }}>
-                {GK_NAMES.map(n => <option key={n} value={n}>{n || "— Select GK —"}</option>)}
-              </select>
-            ) : (
-              <select value={p.name} onChange={e => updatePlayer(p.id, "name", e.target.value)} style={{ ...selectSt, flex: 1 }}>
-                {availableNames.map(n => <option key={n} value={n}>{n || "— Select Player —"}</option>)}
-              </select>
-            )}
+          <div style={{display:"flex",alignItems:"center",gap:8,background:i%2===0?CARD_BG:"#0e2218",borderRadius:7,padding:"8px 10px",border:`1px solid ${BORDER}`}}>
+            <input value={p.number} onChange={e=>upd(p.id,"number",e.target.value)} style={{...iSt,width:44,textAlign:"center",padding:"6px 4px",flexShrink:0}} placeholder="#"/>
+            <span style={{fontSize:10,fontWeight:700,minWidth:34,textAlign:"center",flexShrink:0,color:posColors[posLabel]||"#555",background:(posColors[posLabel]||"#555")+"22",borderRadius:4,padding:"2px 4px"}}>{posLabel}</span>
+            {p.role==="gk"
+              ? <select value={p.name} onChange={e=>upd(p.id,"name",e.target.value)} style={{...sSt,flex:1}}>{GK_NAMES.map(n=><option key={n} value={n}>{n||"— Select GK —"}</option>)}</select>
+              : <select value={p.name} onChange={e=>upd(p.id,"name",e.target.value)} style={{...sSt,flex:1}}>{avail.map(n=><option key={n} value={n}>{n||"— Select Player —"}</option>)}</select>
+            }
           </div>
         );
       };
-
       return (
-        <div style={{ minHeight: "100vh", background: BG_DARK, color: "#e8f5ee", fontFamily: "'Segoe UI', sans-serif" }}>
-          <div style={{
-            background: "linear-gradient(135deg, #0d3320 0%, #0a1f15 100%)",
-            padding: "16px 20px", borderBottom: `2px solid ${ACCENT}`,
-            display: "flex", alignItems: "center", justifyContent: "space-between"
-          }}>
+        <div style={{minHeight:"100vh",background:BG_DARK,color:"#e8f5ee",fontFamily:"'Segoe UI',sans-serif"}}>
+          <div style={{background:"linear-gradient(135deg,#0d3320 0%,#0a1f15 100%)",padding:"16px 20px",borderBottom:`2px solid ${ACCENT}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
-              <div style={{ fontFamily: "'Impact',sans-serif", fontSize: 22, letterSpacing: 4, color: "#fff" }}>MATCH SETTINGS</div>
-              <div style={{ color: ACCENT, fontSize: 11, letterSpacing: 3 }}>BENTLEIGH GREENS</div>
+              <div style={{fontFamily:"'Impact',sans-serif",fontSize:22,letterSpacing:4,color:"#fff"}}>MATCH SETTINGS</div>
+              <div style={{color:ACCENT,fontSize:11,letterSpacing:3}}>BENTLEIGH GREENS</div>
             </div>
-            <button onClick={onClose} style={{
-              background: "#1a3a26", color: "#aaa", border: `1px solid ${BORDER}`,
-              borderRadius: 7, padding: "7px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13
-            }}>✕ Close</button>
+            <button onClick={onClose} style={{background:"#1a3a26",color:"#aaa",border:`1px solid ${BORDER}`,borderRadius:7,padding:"7px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>✕ Close</button>
           </div>
-
-          <div style={{ padding: "16px 14px", maxWidth: 600, margin: "0 auto" }}>
-            {sectionHeader("⚙️ Match Info")}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
+          <div style={{padding:"16px 14px",maxWidth:600,margin:"0 auto"}}>
+            {secH("⚙️ Match Info")}
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:8}}>
+              <div><label style={{fontSize:11,color:"#7ab890",letterSpacing:1,display:"block",marginBottom:4}}>OUR TEAM NAME</label><input value={lHome} onChange={e=>setLHome(e.target.value)} style={iSt} placeholder="Bentleigh Greens"/></div>
               <div>
-                <label style={{ fontSize: 11, color: "#7ab890", letterSpacing: 1, display: "block", marginBottom: 4 }}>OUR TEAM NAME</label>
-                <input value={localHome} onChange={e => setLocalHome(e.target.value)} style={inputSt} placeholder="Bentleigh Greens" />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, color: "#7ab890", letterSpacing: 1, display: "block", marginBottom: 4 }}>OUR FORMATION</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {FORMATIONS.map(f => (
-                    <button key={f} onClick={() => setLocalHomeFormation(f)} style={{
-                      padding: "6px 12px", borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: "pointer",
-                      border: `2px solid ${localHomeFormation === f ? ACCENT : BORDER}`,
-                      background: localHomeFormation === f ? "#0e3a20" : "#0a1a0f",
-                      color: localHomeFormation === f ? ACCENT : "#555", transition: "all 0.15s"
-                    }}>{f}</button>
-                  ))}
+                <label style={{fontSize:11,color:"#7ab890",letterSpacing:1,display:"block",marginBottom:4}}>OUR FORMATION</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {FORMATIONS.map(f=><button key={f} onClick={()=>setLHF(f)} style={{padding:"6px 12px",borderRadius:6,fontWeight:700,fontSize:13,cursor:"pointer",border:`2px solid ${lHF===f?ACCENT:BORDER}`,background:lHF===f?"#0e3a20":"#0a1a0f",color:lHF===f?ACCENT:"#555",transition:"all 0.15s"}}>{f}</button>)}
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "#7ab890", letterSpacing: 1, display: "block", marginBottom: 4 }}>OPPOSITION TEAM</label>
-                <input value={localAway} onChange={e => setLocalAway(e.target.value)} style={inputSt} placeholder="Away Team" />
+                <label style={{fontSize:11,color:"#7ab890",letterSpacing:1,display:"block",marginBottom:4}}>OPPOSITION TEAM</label>
+                <select value={lAway} onChange={e=>setLAway(e.target.value)} style={sSt}>
+                  {OPPOSITION_TEAMS.map(t=><option key={t} value={t}>{t||"— Select Opposition —"}</option>)}
+                </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "#7ab890", letterSpacing: 1, display: "block", marginBottom: 4 }}>OPPOSITION FORMATION</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {FORMATIONS.map(f => (
-                    <button key={f} onClick={() => setLocalAwayFormation(f)} style={{
-                      padding: "6px 12px", borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: "pointer",
-                      border: `2px solid ${localAwayFormation === f ? GOLD : BORDER}`,
-                      background: localAwayFormation === f ? "#2a1f00" : "#0a1a0f",
-                      color: localAwayFormation === f ? GOLD : "#555", transition: "all 0.15s"
-                    }}>{f}</button>
-                  ))}
+                <label style={{fontSize:11,color:"#7ab890",letterSpacing:1,display:"block",marginBottom:4}}>OPPOSITION FORMATION</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {FORMATIONS.map(f=><button key={f} onClick={()=>setLAF(f)} style={{padding:"6px 12px",borderRadius:6,fontWeight:700,fontSize:13,cursor:"pointer",border:`2px solid ${lAF===f?GOLD:BORDER}`,background:lAF===f?"#2a1f00":"#0a1a0f",color:lAF===f?GOLD:"#555",transition:"all 0.15s"}}>{f}</button>)}
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "#7ab890", letterSpacing: 1, display: "block", marginBottom: 8 }}>VENUE</label>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {[true, false].map(isHome => (
-                    <button key={String(isHome)} onClick={() => setLocalIsHome(isHome)} style={{
-                      flex: 1, padding: "10px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: "pointer",
-                      border: `2px solid ${localIsHome === isHome ? ACCENT : BORDER}`,
-                      background: localIsHome === isHome ? "#0e3a20" : "#0a1a0f",
-                      color: localIsHome === isHome ? ACCENT : "#666", transition: "all 0.15s"
-                    }}>{isHome ? "🏠 Home" : "✈️ Away"}</button>
-                  ))}
+                <label style={{fontSize:11,color:"#7ab890",letterSpacing:1,display:"block",marginBottom:8}}>VENUE</label>
+                <div style={{display:"flex",gap:10}}>
+                  {[true,false].map(ih=><button key={String(ih)} onClick={()=>setLIsHome(ih)} style={{flex:1,padding:"10px 0",borderRadius:8,fontWeight:700,fontSize:14,cursor:"pointer",border:`2px solid ${lIsHome===ih?ACCENT:BORDER}`,background:lIsHome===ih?"#0e3a20":"#0a1a0f",color:lIsHome===ih?ACCENT:"#666",transition:"all 0.15s"}}>{ih?"🏠 Home":"✈️ Away"}</button>)}
                 </div>
               </div>
             </div>
-
-            {sectionHeader(`👕 Starting XI — ${localHomeFormation}`)}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {starting.map((p, i) => <PlayerRow key={p.id} p={p} i={i} posLabel={i === 0 ? "GK" : positionLabels[i - 1]} />)}
+            {secH(`👕 Starting XI — ${lHF}`)}
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {starting.map((p,i)=><PlayerRow key={p.id} p={p} i={i} posLabel={i===0?"GK":posLabels[i-1]}/>)}
             </div>
-
-            {sectionHeader("🔄 Substitutes")}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {benchPlayers.map((p, i) => <PlayerRow key={p.id} p={p} i={i} posLabel={i === 0 ? "GK" : "SUB"} />)}
+            {secH("🔄 Substitutes")}
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {bench.map((p,i)=><PlayerRow key={p.id} p={p} i={i} posLabel={i===0?"GK":"SUB"}/>)}
             </div>
-
-            <button onClick={save} style={{
-              marginTop: 20, width: "100%", background: ACCENT, color: "#0d1f15",
-              border: "none", borderRadius: 8, padding: "13px 0", fontWeight: 900,
-              cursor: "pointer", fontSize: 16, letterSpacing: 2, fontFamily: "'Impact',sans-serif"
-            }}>SAVE &amp; RETURN TO MATCH</button>
+            <button onClick={save} style={{marginTop:20,width:"100%",background:ACCENT,color:"#0d1f15",border:"none",borderRadius:8,padding:"13px 0",fontWeight:900,cursor:"pointer",fontSize:16,letterSpacing:2,fontFamily:"'Impact',sans-serif"}}>SAVE &amp; RETURN TO MATCH</button>
           </div>
         </div>
       );
     }
 
-    const th = { padding: "4px 5px", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", textAlign: "center" };
-    const td = { padding: "5px 4px", textAlign: "center" };
-
-    function App() {
-      const [homePlayers, setHomePlayers] = useState(initialHomePlayers);
-      const [homeTeam,    setHomeTeam]    = useState(initialHomeTeamStats);
-      const [awayTeam,    setAwayTeam]    = useState(initialAwayTeamStats);
-      const [subs,        setSubs]        = useState([]);
-      const [subForm,     setSubForm]     = useState({ out: "", in: "", minute: "" });
-      const [timerRunning, setTimerRunning] = useState(false);
-      const [elapsed,     setElapsed]     = useState(0);
-      const [showResetConfirm,   setShowResetConfirm]   = useState(false);
-      const [showEndHalfConfirm, setShowEndHalfConfirm] = useState(false);
-      const [half,        setHalf]        = useState("pre");
-      const [homeTeamName, setHomeTeamName] = useState("Bentleigh Greens");
-      const [awayTeamName, setAwayTeamName] = useState("Away Team");
-      const [isHomeGame,  setIsHomeGame]  = useState(true);
-      const [homeFormation, setHomeFormation] = useState("4-3-3");
-      const [awayFormation, setAwayFormation] = useState("4-3-3");
-      const [history,     setHistory]     = useState([]);
-      const [page,        setPage]        = useState("match");
-      const intervalRef = useRef(null);
-
-      useEffect(() => {
-        if (timerRunning) {
-          intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-        } else { clearInterval(intervalRef.current); }
-        return () => clearInterval(intervalRef.current);
-      }, [timerRunning]);
-
-      const formatTime = s => {
-        const m   = Math.floor(s / 60).toString().padStart(2, "0");
-        const sec = (s % 60).toString().padStart(2, "0");
-        return `${m}:${sec}`;
-      };
-
-      const snapshot = () => setHistory(prev => [...prev.slice(-49), {
-        homePlayers: JSON.parse(JSON.stringify(homePlayers)),
-        homeTeam: { ...homeTeam }, awayTeam: { ...awayTeam }
-      }]);
-
-      const undo = () => {
-        if (!history.length) return;
-        const last = history[history.length - 1];
-        setHomePlayers(last.homePlayers); setHomeTeam(last.homeTeam); setAwayTeam(last.awayTeam);
-        setHistory(prev => prev.slice(0, -1));
-      };
-
-      const statsLocked = half === "h1ended";
-
-      const incPlayer = (id, field) => {
-        if (statsLocked) return;
-        snapshot();
-        setHomePlayers(prev => prev.map(p => p.id === id ? { ...p, [field]: p[field] + 1 } : p));
-      };
-      const incHomeTeam = field => { if (statsLocked) return; snapshot(); setHomeTeam(prev => ({ ...prev, [field]: prev[field] + 1 })); };
-      const incAway = field => {
-        if (statsLocked) return;
-        if (field === "subs" && awayTeam.subs >= 5) return;
-        snapshot();
-        setAwayTeam(prev => ({ ...prev, [field]: prev[field] + 1 }));
-      };
-
-      const addSub = () => {
-        if (statsLocked || (!subForm.out && !subForm.in)) return;
-        setSubs(prev => [...prev, { ...subForm, id: Date.now() }]);
-        setSubForm({ out: "", in: "", minute: "" });
-      };
-      const removeSub = id => setSubs(prev => prev.filter(s => s.id !== id));
-
-      const homeGoals    = homePlayers.reduce((a, p) => a + p.goals, 0);
-      const homeShots    = homePlayers.reduce((a, p) => a + p.shots, 0);
-      const homeFouls    = homePlayers.reduce((a, p) => a + p.fouls, 0);
-      const homeYellow   = homePlayers.reduce((a, p) => a + p.yellow, 0);
-      const homeRed      = homePlayers.reduce((a, p) => a + p.red, 0);
-      const homeOffsides = homePlayers.reduce((a, p) => a + p.offsides, 0);
-
-      const sectionHeader = label => (
-        <div style={{
-          fontFamily: "'Impact', sans-serif", color: ACCENT, letterSpacing: 3, fontSize: 13,
-          borderBottom: `1px solid ${BORDER}`, paddingBottom: 4, marginBottom: 10, marginTop: 6,
-          textTransform: "uppercase"
-        }}>{label}</div>
-      );
-
-      const inputStyle = {
-        background: "#0a1a0f", color: "#fff", border: `1px solid ${BORDER}`,
-        borderRadius: 6, padding: "6px 10px", fontSize: 13, width: 110, outline: "none"
-      };
-
-      const ourLabel   = homeTeamName;
-      const theirLabel = awayTeamName;
-      const ourScore   = homeGoals;
-      const theirScore = awayTeam.goals;
-
-      if (page === "settings") return (
-        <SettingsPage
-          homePlayers={homePlayers} setHomePlayers={setHomePlayers}
-          homeTeamName={homeTeamName} setHomeTeamName={setHomeTeamName}
-          awayTeamName={awayTeamName} setAwayTeamName={setAwayTeamName}
-          isHomeGame={isHomeGame} setIsHomeGame={setIsHomeGame}
-          homeFormation={homeFormation} setHomeFormation={setHomeFormation}
-          awayFormation={awayFormation} setAwayFormation={setAwayFormation}
-          onClose={() => setPage("match")}
-        />
-      );
-
+    function ReportPage({homePlayers,homeTeamName,awayTeamName,homeFormation,awayFormation,isHomeGame,homeTeam,awayTeam,subs,onClose}) {
+      const starters=homePlayers.slice(0,11), bench=homePlayers.slice(11,17);
+      const homeGoals=homePlayers.reduce((a,p)=>a+p.goals,0);
+      const homeShotsOn=homePlayers.reduce((a,p)=>a+p.shots,0);
+      const homeOff=homePlayers.reduce((a,p)=>a+p.offtarget,0);
+      const homeShotsTotal=homeShotsOn+homeOff;
+      const homeAssists=homePlayers.reduce((a,p)=>a+p.assists,0);
+      const homeFouls=homePlayers.reduce((a,p)=>a+p.fouls,0);
+      const homeYellow=homePlayers.reduce((a,p)=>a+p.yellow,0);
+      const homeRed=homePlayers.reduce((a,p)=>a+p.red,0);
+      const homeOffsides=homePlayers.reduce((a,p)=>a+p.offsides,0);
+      const leftName=isHomeGame?homeTeamName:awayTeamName;
+      const rightName=isHomeGame?awayTeamName:homeTeamName;
+      const leftScore=isHomeGame?homeGoals:awayTeam.goals;
+      const rightScore=isHomeGame?awayTeam.goals:homeGoals;
+      const secH=label=><div style={{fontFamily:"'Impact',sans-serif",color:ACCENT,letterSpacing:3,fontSize:13,borderBottom:`1px solid ${BORDER}`,paddingBottom:4,marginBottom:10,marginTop:16,textTransform:"uppercase"}}>{label}</div>;
+      const tth={padding:"4px 5px",fontWeight:600,letterSpacing:1,textTransform:"uppercase",textAlign:"center"};
+      const ttd={padding:"5px 4px",textAlign:"center"};
+      const benchActive=bench.filter(p=>p.goals+p.assists+p.shots+p.offtarget+p.fouls+p.yellow+p.red+p.offsides>0);
       return (
-        <div style={{ minHeight: "100vh", background: BG_DARK, fontFamily: "'Segoe UI', sans-serif", color: "#e8f5ee", paddingBottom: 40 }}>
-
-          {showResetConfirm && (
-            <ConfirmDialog
-              message="This will reset the match timer to 00:00."
-              onConfirm={() => { setTimerRunning(false); setElapsed(0); setHalf("pre"); setShowResetConfirm(false); }}
-              onCancel={() => setShowResetConfirm(false)}
-            />
-          )}
-
-          {showEndHalfConfirm && (
-            <ConfirmDialog
-              message={showEndHalfConfirm === "h1" ? "Do you want to end the first half?" : "End the second half? Timer will stop."}
-              confirmLabel="END"
-              onConfirm={() => {
-                setTimerRunning(false);
-                if (showEndHalfConfirm === "h1") { setElapsed(45 * 60); setHalf("h1ended"); }
-                else { setElapsed(90 * 60); setHalf("full_time"); }
-                setShowEndHalfConfirm(false);
-              }}
-              onCancel={() => setShowEndHalfConfirm(false)}
-            />
-          )}
-
-          {/* HEADER */}
-          <div style={{
-            background: `linear-gradient(135deg, ${BG_GREEN} 0%, #0d3320 100%)`,
-            borderBottom: `2px solid ${ACCENT}`, padding: "14px 16px 10px"
-          }}>
-            <div style={{ textAlign: "center", marginBottom: 12 }}>
-              <div style={{ fontFamily: "'Impact',sans-serif", fontSize: 28, letterSpacing: 5, color: "#fff", lineHeight: 1 }}>
-                BENTLEIGH GREENS
-              </div>
-              <div style={{ color: ACCENT, fontSize: 11, letterSpacing: 4, marginTop: 2 }}>MATCHDAY STATS</div>
+        <div style={{minHeight:"100vh",background:BG_DARK,color:"#e8f5ee",fontFamily:"'Segoe UI',sans-serif"}}>
+          <div className="no-print" style={{background:`linear-gradient(135deg,${BG_GREEN} 0%,#0d3320 100%)`,padding:"14px 20px",borderBottom:`2px solid ${ACCENT}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontFamily:"'Impact',sans-serif",fontSize:20,letterSpacing:4,color:"#fff"}}>MATCH REPORT</div>
+              <div style={{color:ACCENT,fontSize:11,letterSpacing:3}}>BENTLEIGH GREENS FC</div>
             </div>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 12 }}>
-              <div style={{ textAlign: "center", minWidth: 100 }}>
-                <div style={{ fontSize: 42, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{isHomeGame ? ourScore : theirScore}</div>
-                <div style={{ fontSize: 12, color: "#fff", marginTop: 4, fontWeight: 600 }}>{isHomeGame ? ourLabel : theirLabel}</div>
-              </div>
-              <div style={{ fontSize: 26, color: "#fff", fontWeight: 700 }}>:</div>
-              <div style={{ textAlign: "center", minWidth: 100 }}>
-                <div style={{ fontSize: 42, fontWeight: 900, color: "#fff", lineHeight: 1 }}>{isHomeGame ? theirScore : ourScore}</div>
-                <div style={{ fontSize: 12, color: "#fff", marginTop: 4, fontWeight: 600 }}>{isHomeGame ? theirLabel : ourLabel}</div>
-              </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>window.print()} style={{background:GOLD,color:"#0d1f15",border:"none",borderRadius:7,padding:"7px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>⬇ Save / Print PDF</button>
+              <button onClick={onClose} style={{background:"#1a3a26",color:"#aaa",border:`1px solid ${BORDER}`,borderRadius:7,padding:"7px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>✕ Close</button>
             </div>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <button onClick={() => setPage("settings")} style={{
-                background: "#0e2a1a", color: ACCENT, border: `1px solid ${BORDER}`,
-                borderRadius: 7, padding: "7px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13
-              }}>Settings</button>
-
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                <div style={{
-                  fontSize: 32, fontFamily: "monospace", fontWeight: 700,
-                  color: timerRunning ? ACCENT : GOLD, background: "#0a1a0f",
-                  borderRadius: 8, padding: "3px 16px",
-                  border: `2px solid ${timerRunning ? ACCENT : BORDER}`,
-                  letterSpacing: 2, minWidth: 100, textAlign: "center"
-                }}>{formatTime(elapsed)}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {half === "pre" && (
-                    <button onClick={() => { setTimerRunning(true); setHalf("h1running"); }} style={{
-                      background: ACCENT, color: "#0d1f15", border: "none", borderRadius: 6,
-                      padding: "5px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                    }}>START H1</button>
-                  )}
-                  {half === "full_time" && (
-                    <span style={{ color: GOLD, fontWeight: 700, fontSize: 13, letterSpacing: 2 }}>FULL TIME</span>
-                  )}
-                  {half === "h1running" && (<>
-                    <button onClick={() => setTimerRunning(r => !r)} style={{
-                      background: "#1a3a26", color: "#aaa", border: "none", borderRadius: 6,
-                      padding: "5px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                    }}>{timerRunning ? "PAUSE" : "RESUME"}</button>
-                    <button onClick={() => setShowEndHalfConfirm("h1")} style={{
-                      background: "#c0392b", color: "#fff", border: "none", borderRadius: 6,
-                      padding: "5px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                    }}>END H1</button>
-                  </>)}
-                  {half === "h1ended" && (
-                    <button onClick={() => { setTimerRunning(true); setHalf("h2running"); }} style={{
-                      background: ACCENT, color: "#0d1f15", border: "none", borderRadius: 6,
-                      padding: "5px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                    }}>START H2</button>
-                  )}
-                  {half === "h2running" && (<>
-                    <button onClick={() => setTimerRunning(r => !r)} style={{
-                      background: "#1a3a26", color: "#aaa", border: "none", borderRadius: 6,
-                      padding: "5px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                    }}>{timerRunning ? "PAUSE" : "RESUME"}</button>
-                    <button onClick={() => setShowEndHalfConfirm("h2")} style={{
-                      background: "#c0392b", color: "#fff", border: "none", borderRadius: 6,
-                      padding: "5px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                    }}>END H2</button>
-                  </>)}
-                  {half !== "full_time" && (
-                    <button onClick={() => setShowResetConfirm(true)} style={{
-                      background: "#1a3a26", color: "#aaa", border: "none", borderRadius: 6,
-                      padding: "5px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                    }}>RESET</button>
-                  )}
+          </div>
+          <div style={{padding:"16px 14px",maxWidth:720,margin:"0 auto"}}>
+            <div className="print-section" style={{background:CARD_BG,borderRadius:10,padding:"16px 14px",marginBottom:14,border:`1px solid ${BORDER}`,textAlign:"center"}}>
+              <div style={{color:"#aaa",fontSize:11,letterSpacing:3,marginBottom:8}}>FULL TIME RESULT</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16}}>
+                <div style={{minWidth:110,textAlign:"right"}}>
+                  <div style={{fontSize:13,color:"#fff",fontWeight:600}}>{leftName}</div>
+                  <div style={{fontSize:11,color:"#aaa"}}>{isHomeGame?homeFormation:awayFormation}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:48,fontWeight:900,color:"#fff"}}>{leftScore}</span>
+                  <span style={{fontSize:28,color:"#555"}}>:</span>
+                  <span style={{fontSize:48,fontWeight:900,color:"#fff"}}>{rightScore}</span>
+                </div>
+                <div style={{minWidth:110,textAlign:"left"}}>
+                  <div style={{fontSize:13,color:"#fff",fontWeight:600}}>{rightName}</div>
+                  <div style={{fontSize:11,color:"#aaa"}}>{isHomeGame?awayFormation:homeFormation}</div>
                 </div>
               </div>
+            </div>
+            <div className="print-section" style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+              {secH(`🟢 ${homeTeamName} — Team Totals`)}
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {[{label:"Goals",value:homeGoals},{label:"Assists",value:homeAssists},{label:"Shots",value:`${homeShotsTotal} (${homeShotsOn})`},{label:"Corners",value:homeTeam.corners},{label:"Fouls",value:homeFouls},{label:"Yellow",value:homeYellow},{label:"Red",value:homeRed},{label:"Offsides",value:homeOffsides}].map(s=>(
+                  <div key={s.label} style={{textAlign:"center",background:"#0e2218",borderRadius:8,padding:"8px 12px",minWidth:70,flex:1}}>
+                    <div style={{fontSize:10,color:"#7ab890",letterSpacing:1,marginBottom:4}}>{s.label.toUpperCase()}</div>
+                    <div style={{fontSize:20,fontWeight:700,color:"#fff"}}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="print-section" style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+              {secH("👕 Player Stats — Starting XI")}
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{color:"#7ab890",fontSize:10}}>{["#","Name","⚽","Ast","Shots","Foul","🟨","🟥","Offside"].map(h=><th key={h} style={{...tth,textAlign:h==="Name"?"left":"center"}}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {starters.map((p,i)=>(
+                      <tr key={p.id} style={{borderTop:`1px solid ${BORDER}`,background:i%2===0?"transparent":"#0e2218"}}>
+                        <td style={{...ttd,color:p.role==="gk"?GOLD:ACCENT,fontWeight:700}}>{p.number}</td>
+                        <td style={{...ttd,textAlign:"left",color:p.role==="gk"?GOLD:"#e8f5ee",fontWeight:p.role==="gk"?700:400}}>{p.name||(p.role==="gk"?"GK":`Player ${p.number}`)}</td>
+                        <td style={{...ttd,color:ACCENT,fontWeight:p.goals>0?700:400}}>{p.goals}</td>
+                        <td style={{...ttd,color:"#a29bfe",fontWeight:p.assists>0?700:400}}>{p.assists}</td>
+                        <td style={ttd}>{p.shots+p.offtarget} <span style={{fontSize:10,color:"#5dade2"}}>({p.shots})</span></td>
+                        <td style={{...ttd,color:"#e67e22"}}>{p.fouls}</td>
+                        <td style={ttd}>{p.yellow>0?<span style={{background:"#f0c040",color:"#000",borderRadius:3,padding:"1px 5px",fontWeight:700}}>{p.yellow}</span>:<span style={{color:"#555"}}>0</span>}</td>
+                        <td style={ttd}>{p.red>0?<span style={{background:"#c0392b",color:"#fff",borderRadius:3,padding:"1px 5px",fontWeight:700}}>{p.red}</span>:<span style={{color:"#555"}}>0</span>}</td>
+                        <td style={{...ttd,color:"#e74c3c"}}>{p.offsides}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {benchActive.length>0&&(
+              <div className="print-section" style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+                {secH("🪑 Bench Involvement")}
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                    <thead><tr style={{color:"#7ab890",fontSize:10}}>{["#","Name","⚽","Ast","Shots","Foul","🟨","🟥","Offside"].map(h=><th key={h} style={{...tth,textAlign:h==="Name"?"left":"center"}}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {benchActive.map((p,i)=>(
+                        <tr key={p.id} style={{borderTop:`1px solid ${BORDER}`,background:i%2===0?"transparent":"#0e2218"}}>
+                          <td style={{...ttd,color:p.role==="gk"?GOLD:ACCENT,fontWeight:700}}>{p.number}</td>
+                          <td style={{...ttd,textAlign:"left",color:"#e8f5ee"}}>{p.name||`Sub ${i+1}`}</td>
+                          <td style={{...ttd,color:ACCENT,fontWeight:p.goals>0?700:400}}>{p.goals}</td>
+                          <td style={{...ttd,color:"#a29bfe"}}>{p.assists}</td>
+                          <td style={ttd}>{p.shots+p.offtarget} <span style={{fontSize:10,color:"#5dade2"}}>({p.shots})</span></td>
+                          <td style={{...ttd,color:"#e67e22"}}>{p.fouls}</td>
+                          <td style={ttd}>{p.yellow>0?<span style={{background:"#f0c040",color:"#000",borderRadius:3,padding:"1px 5px",fontWeight:700}}>{p.yellow}</span>:<span style={{color:"#555"}}>0</span>}</td>
+                          <td style={ttd}>{p.red>0?<span style={{background:"#c0392b",color:"#fff",borderRadius:3,padding:"1px 5px",fontWeight:700}}>{p.red}</span>:<span style={{color:"#555"}}>0</span>}</td>
+                          <td style={{...ttd,color:"#e74c3c"}}>{p.offsides}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <div className="print-section" style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+              {secH("🔄 Substitutions")}
+              {subs.length===0?<div style={{color:"#555",fontSize:13}}>No substitutions recorded.</div>
+                :subs.map(s=>(
+                  <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,background:"#0e2218",borderRadius:6,padding:"6px 12px",marginBottom:5,fontSize:13}}>
+                    <span style={{color:GOLD,fontWeight:700,minWidth:36}}>{s.minute?`${s.minute}'`:"—"}</span>
+                    <span style={{color:"#c0392b"}}>↓ {s.out||"?"}</span>
+                    <span style={{color:"#555"}}>→</span>
+                    <span style={{color:ACCENT}}>↑ {s.in||"?"}</span>
+                  </div>
+                ))
+              }
+            </div>
+            <div className="print-section" style={{background:"#1a1a0d",borderRadius:10,padding:"12px 14px",marginBottom:14,border:"1px solid #3a3a1a"}}>
+              {secH(`${awayTeamName} — Team Stats`)}
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {[{label:"Goals",value:awayTeam.goals},{label:"On T",value:awayTeam.shotsOn},{label:"Off T",value:awayTeam.shotsOff},{label:"Corners",value:awayTeam.corners},{label:"Fouls",value:awayTeam.fouls},{label:"Yellow",value:awayTeam.yellow},{label:"Red",value:awayTeam.red},{label:"Offsides",value:awayTeam.offsides},{label:"Subs",value:awayTeam.subs}].map(s=>(
+                  <div key={s.label} style={{textAlign:"center",background:"#111100",borderRadius:8,padding:"8px 12px",minWidth:65,flex:1}}>
+                    <div style={{fontSize:10,color:"#888",letterSpacing:1,marginBottom:4}}>{s.label.toUpperCase()}</div>
+                    <div style={{fontSize:20,fontWeight:700,color:"#fff"}}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{textAlign:"center",marginTop:8,marginBottom:20,color:"#2a5a35",fontSize:11,letterSpacing:2}}>BENTLEIGH GREENS FC · MATCHDAY STATS</div>
+          </div>
+        </div>
+      );
+    }
 
-              <button onClick={undo} disabled={history.length === 0} style={{
-                background: "#0e2a1a", color: history.length === 0 ? "#3a5a3a" : ACCENT,
-                border: `1px solid ${BORDER}`, borderRadius: 7, padding: "7px 14px",
-                fontWeight: 700, cursor: history.length === 0 ? "default" : "pointer", fontSize: 13
-              }}>Undo {history.length > 0 && <span style={{ fontSize: 10, opacity: 0.7 }}>({history.length})</span>}</button>
+    const th={padding:"4px 5px",fontWeight:600,letterSpacing:1,textTransform:"uppercase",textAlign:"center"};
+    const td={padding:"5px 4px",textAlign:"center"};
+
+    function App() {
+      const [hp,setHp]=useState(initialHomePlayers);
+      const [homeTeam,setHomeTeam]=useState(initialHomeTeamStats);
+      const [awayTeam,setAwayTeam]=useState(initialAwayTeamStats);
+      const [subs,setSubs]=useState([]);
+      const [subForm,setSubForm]=useState({out:"",in:"",minute:""});
+      const [running,setRunning]=useState(false);
+      const [elapsed,setElapsed]=useState(0);
+      const [showReset,setShowReset]=useState(false);
+      const [showEndHalf,setShowEndHalf]=useState(false);
+      const [half,setHalf]=useState("pre");
+      const [homeName,setHomeName]=useState("Bentleigh Greens");
+      const [awayName,setAwayName]=useState("Away Team");
+      const [isHome,setIsHome]=useState(true);
+      const [homeFm,setHomeFm]=useState("4-3-3");
+      const [awayFm,setAwayFm]=useState("4-3-3");
+      const [hist,setHist]=useState([]);
+      const [page,setPage]=useState("match");
+      const ref=useRef(null);
+
+      useEffect(()=>{
+        if(running){ref.current=setInterval(()=>setElapsed(e=>e+1),1000);}
+        else clearInterval(ref.current);
+        return ()=>clearInterval(ref.current);
+      },[running]);
+
+      const fmt=s=>{const m=Math.floor(s/60).toString().padStart(2,"0"),sec=(s%60).toString().padStart(2,"0");return`${m}:${sec}`;};
+      const snap=()=>setHist(prev=>[...prev.slice(-49),{hp:JSON.parse(JSON.stringify(hp)),ht:{...homeTeam},at:{...awayTeam}}]);
+      const undo=()=>{if(!hist.length)return;const l=hist[hist.length-1];setHp(l.hp);setHomeTeam(l.ht);setAwayTeam(l.at);setHist(p=>p.slice(0,-1));};
+      const locked=half==="h1ended"||half==="pre"||half==="full_time";
+      const incP=(id,f)=>{if(locked)return;snap();setHp(prev=>prev.map(p=>p.id===id?{...p,[f]:p[f]+1}:p));};
+      const incH=f=>{if(locked)return;snap();setHomeTeam(prev=>({...prev,[f]:prev[f]+1}));};
+      const incA=f=>{if(locked)return;if(f==="subs"&&awayTeam.subs>=5)return;snap();setAwayTeam(prev=>({...prev,[f]:prev[f]+1}));};
+      const addSub=()=>{if(locked||(!subForm.out&&!subForm.in))return;setSubs(prev=>[...prev,{...subForm,id:Date.now()}]);setSubForm({out:"",in:"",minute:""});};
+      const remSub=id=>setSubs(prev=>prev.filter(s=>s.id!==id));
+
+      const hGoals=hp.reduce((a,p)=>a+p.goals,0);
+      const hShotsOn=hp.reduce((a,p)=>a+p.shots,0);
+      const hOff=hp.reduce((a,p)=>a+p.offtarget,0);
+      const hShotsTotal=hShotsOn+hOff;
+      const hFouls=hp.reduce((a,p)=>a+p.fouls,0);
+      const hYellow=hp.reduce((a,p)=>a+p.yellow,0);
+      const hRed=hp.reduce((a,p)=>a+p.red,0);
+      const hOffsides=hp.reduce((a,p)=>a+p.offsides,0);
+
+      const secH=label=><div style={{fontFamily:"'Impact',sans-serif",color:ACCENT,letterSpacing:3,fontSize:13,borderBottom:`1px solid ${BORDER}`,paddingBottom:4,marginBottom:10,marginTop:6,textTransform:"uppercase"}}>{label}</div>;
+      const inpSt={background:"#0a1a0f",color:"#fff",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 10px",fontSize:13,width:110,outline:"none"};
+
+      if(page==="settings") return <SettingsPage homePlayers={hp} setHomePlayers={setHp} homeTeamName={homeName} setHomeTeamName={setHomeName} awayTeamName={awayName} setAwayTeamName={setAwayName} isHomeGame={isHome} setIsHomeGame={setIsHome} homeFormation={homeFm} setHomeFormation={setHomeFm} awayFormation={awayFm} setAwayFormation={setAwayFm} onClose={()=>setPage("match")}/>;
+      if(page==="report") return <ReportPage homePlayers={hp} homeTeamName={homeName} awayTeamName={awayName} homeFormation={homeFm} awayFormation={awayFm} isHomeGame={isHome} homeTeam={homeTeam} awayTeam={awayTeam} subs={subs} onClose={()=>setPage("match")}/>;
+
+      const ourScore=hGoals, theirScore=awayTeam.goals;
+      const ourLabel=homeName, theirLabel=awayName;
+
+      return (
+        <div style={{minHeight:"100vh",background:BG_DARK,fontFamily:"'Segoe UI',sans-serif",color:"#e8f5ee",paddingBottom:40}}>
+          {showReset&&<ConfirmDialog message="This will reset the match timer to 00:00." onConfirm={()=>{setRunning(false);setElapsed(0);setHalf("pre");setShowReset(false);}} onCancel={()=>setShowReset(false)}/>}
+          {showEndHalf&&<ConfirmDialog message={showEndHalf==="h1"?"Do you want to end the first half?":"End the second half? Timer will stop."} confirmLabel="END" onConfirm={()=>{setRunning(false);if(showEndHalf==="h1"){setElapsed(45*60);setHalf("h1ended");}else{setElapsed(90*60);setHalf("full_time");}setShowEndHalf(false);}} onCancel={()=>setShowEndHalf(false)}/>}
+
+          <div style={{background:`linear-gradient(135deg,${BG_GREEN} 0%,#0d3320 100%)`,borderBottom:`2px solid ${ACCENT}`,padding:"14px 16px 10px"}}>
+            <div style={{textAlign:"center",marginBottom:12}}>
+              <div style={{fontFamily:"'Impact',sans-serif",fontSize:28,letterSpacing:5,color:"#fff",lineHeight:1}}>BENTLEIGH GREENS</div>
+              <div style={{color:ACCENT,fontSize:11,letterSpacing:4,marginTop:2}}>MATCHDAY STATS</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginBottom:12}}>
+              <div style={{textAlign:"center",minWidth:100}}>
+                <div style={{fontSize:42,fontWeight:900,color:"#fff",lineHeight:1}}>{isHome?ourScore:theirScore}</div>
+                <div style={{fontSize:12,color:"#fff",marginTop:4,fontWeight:600}}>{isHome?ourLabel:theirLabel}</div>
+              </div>
+              <div style={{fontSize:26,color:"#fff",fontWeight:700}}>:</div>
+              <div style={{textAlign:"center",minWidth:100}}>
+                <div style={{fontSize:42,fontWeight:900,color:"#fff",lineHeight:1}}>{isHome?theirScore:ourScore}</div>
+                <div style={{fontSize:12,color:"#fff",marginTop:4,fontWeight:600}}>{isHome?theirLabel:ourLabel}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+              <button onClick={()=>setPage("settings")} style={{background:"#0e2a1a",color:ACCENT,border:`1px solid ${BORDER}`,borderRadius:7,padding:"7px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>Settings</button>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+                <div style={{fontSize:32,fontFamily:"monospace",fontWeight:700,color:running?ACCENT:GOLD,background:"#0a1a0f",borderRadius:8,padding:"3px 16px",border:`2px solid ${running?ACCENT:BORDER}`,letterSpacing:2,minWidth:100,textAlign:"center"}}>{fmt(elapsed)}</div>
+                <div style={{display:"flex",gap:8}}>
+                  {half==="pre"&&<button onClick={()=>{setRunning(true);setHalf("h1running");}} style={{background:ACCENT,color:"#0d1f15",border:"none",borderRadius:6,padding:"5px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>START H1</button>}
+                  {half==="full_time"&&<><span style={{color:GOLD,fontWeight:700,fontSize:13,letterSpacing:2}}>FULL TIME</span><button onClick={()=>setPage("report")} style={{background:GOLD,color:"#0d1f15",border:"none",borderRadius:6,padding:"5px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>View Report</button></>}
+                  {half==="h1running"&&<><button onClick={()=>setRunning(r=>!r)} style={{background:"#1a3a26",color:"#aaa",border:"none",borderRadius:6,padding:"5px 12px",fontWeight:700,cursor:"pointer",fontSize:13}}>{running?"PAUSE":"RESUME"}</button><button onClick={()=>setShowEndHalf("h1")} style={{background:"#c0392b",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>END H1</button></>}
+                  {half==="h1ended"&&<button onClick={()=>{setRunning(true);setHalf("h2running");}} style={{background:ACCENT,color:"#0d1f15",border:"none",borderRadius:6,padding:"5px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>START H2</button>}
+                  {half==="h2running"&&<><button onClick={()=>setRunning(r=>!r)} style={{background:"#1a3a26",color:"#aaa",border:"none",borderRadius:6,padding:"5px 12px",fontWeight:700,cursor:"pointer",fontSize:13}}>{running?"PAUSE":"RESUME"}</button><button onClick={()=>setShowEndHalf("h2")} style={{background:"#c0392b",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>END H2</button></>}
+                  {half!=="full_time"&&<button onClick={()=>setShowReset(true)} style={{background:"#1a3a26",color:"#aaa",border:"none",borderRadius:6,padding:"5px 12px",fontWeight:700,cursor:"pointer",fontSize:13}}>RESET</button>}
+                </div>
+              </div>
+              <button onClick={undo} disabled={hist.length===0} style={{background:"#0e2a1a",color:hist.length===0?"#3a5a3a":ACCENT,border:`1px solid ${BORDER}`,borderRadius:7,padding:"7px 14px",fontWeight:700,cursor:hist.length===0?"default":"pointer",fontSize:13,transition:"all 0.15s"}}>Undo {hist.length>0&&<span style={{fontSize:10,opacity:0.7}}>({hist.length})</span>}</button>
             </div>
           </div>
 
-          <div style={{ padding: "14px 12px", maxWidth: 720, margin: "0 auto" }}>
-
-            {statsLocked && (
-              <div style={{
-                background: "#000", border: `2px solid ${ACCENT}`, borderRadius: 10,
-                padding: "12px 16px", marginBottom: 14, textAlign: "center"
-              }}>
-                <div style={{ color: ACCENT, fontWeight: 600, fontSize: 26, letterSpacing: 3, fontFamily: "'Impact',sans-serif" }}>HALF TIME</div>
-                <div style={{ color: ACCENT, fontSize: 14, marginTop: 6, fontWeight: 700, letterSpacing: 1 }}>
-                  STATS ARE LOCKED — PRESS START H2 TO RESUME TRACKING
-                </div>
+          <div style={{padding:"14px 12px",maxWidth:720,margin:"0 auto"}}>
+            {locked&&half==="h1ended"&&(
+              <div style={{background:"#000",border:`2px solid ${ACCENT}`,borderRadius:10,padding:"12px 16px",marginBottom:14,textAlign:"center"}}>
+                <div style={{color:ACCENT,fontWeight:600,fontSize:26,letterSpacing:3,fontFamily:"'Impact',sans-serif"}}>HALF TIME</div>
+                <div style={{color:ACCENT,fontSize:14,marginTop:6,fontWeight:700,letterSpacing:1}}>STATS ARE LOCKED — PRESS START H2 TO RESUME TRACKING</div>
               </div>
             )}
 
             {/* HOME TOTALS */}
-            <div style={{ background: CARD_BG, borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: `1px solid ${BORDER}` }}>
-              {sectionHeader(`🟢 ${ourLabel} — Team Totals`)}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                {[
-                  { label: "Shots",    value: homeShots },
-                  { label: "Fouls",    value: homeFouls },
-                  { label: "Yellow",   value: homeYellow },
-                  { label: "Red",      value: homeRed },
-                  { label: "Offsides", value: homeOffsides },
-                ].map(s => (
-                  <div key={s.label} style={{ textAlign: "center", flex: 1 }}>
-                    <div style={{ fontSize: 10, color: "#7ab890", letterSpacing: 1, marginBottom: 2 }}>{s.label.toUpperCase()}</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>{s.value}</div>
+            <div style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+              {secH(`🟢 ${ourLabel} — Team Totals`)}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div style={{textAlign:"center",flex:1}}>
+                  <div style={{fontSize:10,color:"#7ab890",letterSpacing:1,marginBottom:2}}>SHOTS</div>
+                  <div style={{fontSize:22,fontWeight:700,color:"#fff",display:"flex",alignItems:"baseline",justifyContent:"center",gap:3}}>
+                    <span>{hShotsTotal}</span><span style={{fontSize:13,color:"#5dade2",fontWeight:600}}>({hShotsOn})</span>
+                  </div>
+                </div>
+                {[{label:"Fouls",value:hFouls},{label:"Yellow",value:hYellow},{label:"Red",value:hRed},{label:"Offsides",value:hOffsides}].map(s=>(
+                  <div key={s.label} style={{textAlign:"center",flex:1}}>
+                    <div style={{fontSize:10,color:"#7ab890",letterSpacing:1,marginBottom:2}}>{s.label.toUpperCase()}</div>
+                    <div style={{fontSize:22,fontWeight:700,color:"#fff"}}>{s.value}</div>
                   </div>
                 ))}
-                <div style={{ textAlign: "center", flex: 1 }}>
-                  <div style={{ fontSize: 10, color: "#7ab890", letterSpacing: 1, marginBottom: 2 }}>CORNERS</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", cursor: "pointer", userSelect: "none", display: "inline-block", borderRadius: 5, padding: "0 6px" }}
-                    onClick={() => incHomeTeam("corners")}>{homeTeam.corners}</div>
+                <div style={{textAlign:"center",flex:1}}>
+                  <div style={{fontSize:10,color:"#7ab890",letterSpacing:1,marginBottom:2}}>CORNERS</div>
+                  <div style={{fontSize:22,fontWeight:700,color:"#fff",cursor:"pointer",userSelect:"none",display:"inline-block",borderRadius:5,padding:"0 6px"}} onClick={()=>incH("corners")}>{homeTeam.corners}</div>
                 </div>
               </div>
             </div>
 
             {/* STARTING XI */}
-            <div style={{ background: CARD_BG, borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: `1px solid ${BORDER}` }}>
-              {sectionHeader("👕 Starting XI")}
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ color: "#7ab890", fontSize: 10 }}>
-                      <th style={th}>#</th>
-                      <th style={{ ...th, textAlign: "left" }}>Name</th>
-                      <th style={th}>⚽</th>
-                      <th style={th}>On 🎯</th>
-                      <th style={th}>Off 🎯</th>
-                      <th style={th}>Foul</th>
-                      <th style={th}>🟨</th>
-                      <th style={th}>🟥</th>
-                      <th style={th}>Offside</th>
-                    </tr>
-                  </thead>
+            <div style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+              {secH("👕 Starting XI")}
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{color:"#7ab890",fontSize:10}}><th style={th}>#</th><th style={{...th,textAlign:"left"}}>Name</th><th style={th}>⚽</th><th style={th}>Ast</th><th style={th}>On T</th><th style={th}>Off T</th><th style={th}>Foul</th><th style={th}>🟨</th><th style={th}>🟥</th><th style={th}>Offside</th></tr></thead>
                   <tbody>
-                    {homePlayers.slice(0, 11).map((p, i) => (
-                      <tr key={p.id} style={{ borderTop: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "#0e2218" }}>
-                        <td style={{ ...td, color: p.role === "gk" ? GOLD : ACCENT, fontWeight: 700 }}>{p.number}</td>
-                        <td style={{ ...td, textAlign: "left", color: p.role === "gk" ? GOLD : "#e8f5ee", fontWeight: p.role === "gk" ? 700 : 400 }}>{p.name || (p.role === "gk" ? "GK" : `Player ${p.number}`)}</td>
-                        <td style={td}><TapCell value={p.goals}     onInc={() => incPlayer(p.id, "goals")}     color={ACCENT} /></td>
-                        <td style={td}><TapCell value={p.shots}     onInc={() => incPlayer(p.id, "shots")}     color="#5dade2" /></td>
-                        <td style={td}><TapCell value={p.offtarget} onInc={() => incPlayer(p.id, "offtarget")} color="#8e99a4" /></td>
-                        <td style={td}><TapCell value={p.fouls}     onInc={() => incPlayer(p.id, "fouls")}     color="#e67e22" /></td>
-                        <td style={td}><CardTapCell value={p.yellow} onInc={() => incPlayer(p.id, "yellow")} cardColor="#f0c040" /></td>
-                        <td style={td}><CardTapCell value={p.red}    onInc={() => incPlayer(p.id, "red")}    cardColor="#c0392b" /></td>
-                        <td style={td}><TapCell value={p.offsides}  onInc={() => incPlayer(p.id, "offsides")}  color="#e74c3c" /></td>
+                    {hp.slice(0,11).map((p,i)=>(
+                      <tr key={p.id} style={{borderTop:`1px solid ${BORDER}`,background:i%2===0?"transparent":"#0e2218"}}>
+                        <td style={{...td,color:p.role==="gk"?GOLD:ACCENT,fontWeight:700}}>{p.number}</td>
+                        <td style={{...td,textAlign:"left",color:p.role==="gk"?GOLD:"#e8f5ee",fontWeight:p.role==="gk"?700:400}}>{p.name||(p.role==="gk"?"GK":`Player ${p.number}`)}</td>
+                        <td style={td}><TapCell value={p.goals} onInc={()=>incP(p.id,"goals")} color={ACCENT}/></td>
+                        <td style={td}><TapCell value={p.assists} onInc={()=>incP(p.id,"assists")} color="#a29bfe"/></td>
+                        <td style={td}><TapCell value={p.shots} onInc={()=>incP(p.id,"shots")} color="#5dade2"/></td>
+                        <td style={td}><TapCell value={p.offtarget} onInc={()=>incP(p.id,"offtarget")} color="#8e99a4"/></td>
+                        <td style={td}><TapCell value={p.fouls} onInc={()=>incP(p.id,"fouls")} color="#e67e22"/></td>
+                        <td style={td}><CardTapCell value={p.yellow} onInc={()=>incP(p.id,"yellow")} cardColor="#f0c040"/></td>
+                        <td style={td}><CardTapCell value={p.red} onInc={()=>incP(p.id,"red")} cardColor="#c0392b"/></td>
+                        <td style={td}><TapCell value={p.offsides} onInc={()=>incP(p.id,"offsides")} color="#e74c3c"/></td>
                       </tr>
                     ))}
                   </tbody>
@@ -596,35 +481,24 @@
             </div>
 
             {/* BENCH */}
-            <div style={{ background: CARD_BG, borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: `1px solid ${BORDER}` }}>
-              {sectionHeader("🪑 Bench")}
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ color: "#7ab890", fontSize: 10 }}>
-                      <th style={th}>#</th>
-                      <th style={{ ...th, textAlign: "left" }}>Name</th>
-                      <th style={th}>⚽</th>
-                      <th style={th}>On 🎯</th>
-                      <th style={th}>Off 🎯</th>
-                      <th style={th}>Foul</th>
-                      <th style={th}>🟨</th>
-                      <th style={th}>🟥</th>
-                      <th style={th}>Offside</th>
-                    </tr>
-                  </thead>
+            <div style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+              {secH("🪑 Bench")}
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{color:"#7ab890",fontSize:10}}><th style={th}>#</th><th style={{...th,textAlign:"left"}}>Name</th><th style={th}>⚽</th><th style={th}>Ast</th><th style={th}>On T</th><th style={th}>Off T</th><th style={th}>Foul</th><th style={th}>🟨</th><th style={th}>🟥</th><th style={th}>Offside</th></tr></thead>
                   <tbody>
-                    {homePlayers.slice(11, 17).map((p, i) => (
-                      <tr key={p.id} style={{ borderTop: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "#0e2218" }}>
-                        <td style={{ ...td, color: p.role === "gk" ? GOLD : ACCENT, fontWeight: 700 }}>{p.number}</td>
-                        <td style={{ ...td, textAlign: "left", color: p.role === "gk" ? GOLD : "#e8f5ee", fontWeight: p.role === "gk" ? 700 : 400 }}>{p.name || (p.role === "gk" ? "GK" : `Sub ${i + 1}`)}</td>
-                        <td style={td}><TapCell value={p.goals}     onInc={() => incPlayer(p.id, "goals")}     color={ACCENT} /></td>
-                        <td style={td}><TapCell value={p.shots}     onInc={() => incPlayer(p.id, "shots")}     color="#5dade2" /></td>
-                        <td style={td}><TapCell value={p.offtarget} onInc={() => incPlayer(p.id, "offtarget")} color="#8e99a4" /></td>
-                        <td style={td}><TapCell value={p.fouls}     onInc={() => incPlayer(p.id, "fouls")}     color="#e67e22" /></td>
-                        <td style={td}><CardTapCell value={p.yellow} onInc={() => incPlayer(p.id, "yellow")} cardColor="#f0c040" /></td>
-                        <td style={td}><CardTapCell value={p.red}    onInc={() => incPlayer(p.id, "red")}    cardColor="#c0392b" /></td>
-                        <td style={td}><TapCell value={p.offsides}  onInc={() => incPlayer(p.id, "offsides")}  color="#e74c3c" /></td>
+                    {hp.slice(11,17).map((p,i)=>(
+                      <tr key={p.id} style={{borderTop:`1px solid ${BORDER}`,background:i%2===0?"transparent":"#0e2218"}}>
+                        <td style={{...td,color:p.role==="gk"?GOLD:ACCENT,fontWeight:700}}>{p.number}</td>
+                        <td style={{...td,textAlign:"left",color:p.role==="gk"?GOLD:"#e8f5ee",fontWeight:p.role==="gk"?700:400}}>{p.name||(p.role==="gk"?"GK":`Sub ${i+1}`)}</td>
+                        <td style={td}><TapCell value={p.goals} onInc={()=>incP(p.id,"goals")} color={ACCENT}/></td>
+                        <td style={td}><TapCell value={p.assists} onInc={()=>incP(p.id,"assists")} color="#a29bfe"/></td>
+                        <td style={td}><TapCell value={p.shots} onInc={()=>incP(p.id,"shots")} color="#5dade2"/></td>
+                        <td style={td}><TapCell value={p.offtarget} onInc={()=>incP(p.id,"offtarget")} color="#8e99a4"/></td>
+                        <td style={td}><TapCell value={p.fouls} onInc={()=>incP(p.id,"fouls")} color="#e67e22"/></td>
+                        <td style={td}><CardTapCell value={p.yellow} onInc={()=>incP(p.id,"yellow")} cardColor="#f0c040"/></td>
+                        <td style={td}><CardTapCell value={p.red} onInc={()=>incP(p.id,"red")} cardColor="#c0392b"/></td>
+                        <td style={td}><TapCell value={p.offsides} onInc={()=>incP(p.id,"offsides")} color="#e74c3c"/></td>
                       </tr>
                     ))}
                   </tbody>
@@ -633,83 +507,68 @@
             </div>
 
             {/* SUBSTITUTIONS */}
-            <div style={{ background: CARD_BG, borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: `1px solid ${BORDER}` }}>
-              {sectionHeader("🔄 Substitutions")}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                <input placeholder="Player Out" value={subForm.out} onChange={e => setSubForm(f => ({ ...f, out: e.target.value }))} style={inputStyle} />
-                <input placeholder="Player In"  value={subForm.in}  onChange={e => setSubForm(f => ({ ...f, in: e.target.value }))}  style={inputStyle} />
-                <input placeholder="Min"        value={subForm.minute} onChange={e => setSubForm(f => ({ ...f, minute: e.target.value }))} style={{ ...inputStyle, width: 55 }} />
-                <button onClick={addSub} style={{
-                  background: ACCENT, color: "#0d1f15", border: "none", borderRadius: 6,
-                  padding: "6px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13
-                }}>ADD</button>
+            <div style={{background:CARD_BG,borderRadius:10,padding:"12px 14px",marginBottom:14,border:`1px solid ${BORDER}`}}>
+              {secH("🔄 Substitutions")}
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                <select value={subForm.out} onChange={e=>setSubForm(f=>({...f,out:e.target.value}))} style={{background:"#0a1a0f",color:subForm.out?"#c0392b":"#555",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 10px",fontSize:13,flex:1,minWidth:110,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
+                  <option value="">↓ Player Off</option>
+                  {hp.slice(0,11).map(p=><option key={p.id} value={p.name||`Player ${p.number}`} style={{color:"#fff"}}>{p.number}. {p.name||(p.role==="gk"?"GK":`Player ${p.number}`)}</option>)}
+                </select>
+                <select value={subForm.in} onChange={e=>setSubForm(f=>({...f,in:e.target.value}))} style={{background:"#0a1a0f",color:subForm.in?ACCENT:"#555",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 10px",fontSize:13,flex:1,minWidth:110,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
+                  <option value="">↑ Player On</option>
+                  {hp.slice(11,17).map(p=><option key={p.id} value={p.name||`Sub ${p.number}`} style={{color:"#fff"}}>{p.number}. {p.name||(p.role==="gk"?"GK":`Sub ${p.number}`)}</option>)}
+                </select>
+                <input placeholder="Min" value={subForm.minute} onChange={e=>setSubForm(f=>({...f,minute:e.target.value}))} style={{...inpSt,width:55}}/>
+                <button onClick={addSub} style={{background:ACCENT,color:"#0d1f15",border:"none",borderRadius:6,padding:"6px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>ADD</button>
               </div>
-              {subs.length === 0 && <div style={{ color: "#555", fontSize: 13 }}>No substitutions yet.</div>}
-              {subs.map(s => (
-                <div key={s.id} style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  background: "#0e2218", borderRadius: 6, padding: "5px 10px", marginBottom: 5, fontSize: 13
-                }}>
-                  <span style={{ color: GOLD, fontWeight: 700, minWidth: 32 }}>{s.minute ? `${s.minute}'` : "—"}</span>
-                  <span style={{ color: "#c0392b" }}>↓ {s.out || "?"}</span>
-                  <span style={{ color: "#555" }}>→</span>
-                  <span style={{ color: ACCENT }}>↑ {s.in || "?"}</span>
-                  <button onClick={() => removeSub(s.id)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 16 }}>×</button>
+              {subs.length===0&&<div style={{color:"#555",fontSize:13}}>No substitutions yet.</div>}
+              {subs.map(s=>(
+                <div key={s.id} style={{display:"flex",alignItems:"center",gap:8,background:"#0e2218",borderRadius:6,padding:"5px 10px",marginBottom:5,fontSize:13}}>
+                  <span style={{color:GOLD,fontWeight:700,minWidth:32}}>{s.minute?`${s.minute}'`:"—"}</span>
+                  <span style={{color:"#c0392b"}}>↓ {s.out||"?"}</span>
+                  <span style={{color:"#555"}}>→</span>
+                  <span style={{color:ACCENT}}>↑ {s.in||"?"}</span>
+                  <button onClick={()=>remSub(s.id)} style={{marginLeft:"auto",background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16}}>×</button>
                 </div>
               ))}
             </div>
 
             {/* AWAY TEAM */}
-            <div style={{ background: "#1a1a0d", borderRadius: 10, padding: "12px 14px", border: "1px solid #3a3a1a" }}>
-              {sectionHeader(`${theirLabel} — Team Stats`)}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                {[
-                  { label: "Goals",    field: "goals" },
-                  { label: "Shots",    field: "shots" },
-                  { label: "Corners",  field: "corners" },
-                  { label: "Fouls",    field: "fouls" },
-                  { label: "Offsides", field: "offsides" },
-                ].map(s => (
-                  <div key={s.field} style={{ textAlign: "center", flex: 1 }}>
-                    <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>{s.label.toUpperCase()}</div>
-                    <TapCell value={awayTeam[s.field]} onInc={() => incAway(s.field)} color="#fff" />
+            <div style={{background:"#1a1a0d",borderRadius:10,padding:"12px 14px",border:"1px solid #3a3a1a"}}>
+              {secH(`${theirLabel} — Team Stats`)}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+                {[{label:"Goals",field:"goals",color:"#fff"},{label:"On T",field:"shotsOn",color:"#5dade2"},{label:"Off T",field:"shotsOff",color:"#8e99a4"},{label:"Corners",field:"corners",color:"#fff"},{label:"Fouls",field:"fouls",color:"#fff"},{label:"Offsides",field:"offsides",color:"#fff"}].map(s=>(
+                  <div key={s.field} style={{textAlign:"center",flex:1}}>
+                    <div style={{fontSize:10,color:"#888",letterSpacing:1,marginBottom:4}}>{s.label.toUpperCase()}</div>
+                    <TapCell value={awayTeam[s.field]} onInc={()=>incA(s.field)} color={s.color}/>
                   </div>
                 ))}
               </div>
-              <div style={{ display: "flex", justifyContent: "space-around", alignItems: "flex-start" }}>
-                <div style={{ textAlign: "center", flex: 1 }}>
-                  <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>YELLOW</div>
-                  <CardTapCell value={awayTeam.yellow} onInc={() => incAway("yellow")} cardColor="#f0c040" />
-                </div>
-                <div style={{ textAlign: "center", flex: 1 }}>
-                  <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>RED</div>
-                  <CardTapCell value={awayTeam.red} onInc={() => incAway("red")} cardColor="#c0392b" />
-                </div>
-                <div style={{ textAlign: "center", flex: 1 }}>
-                  <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>SUBS</div>
-                  <TapCell value={awayTeam.subs} onInc={() => incAway("subs")} color={awayTeam.subs >= 5 ? "#555" : "#fff"} />
-                  {awayTeam.subs >= 5 && <div style={{ fontSize: 9, color: "#c0392b", marginTop: 2, letterSpacing: 0.5 }}>MAX</div>}
+              <div style={{display:"flex",justifyContent:"space-around",alignItems:"flex-start"}}>
+                <div style={{textAlign:"center",flex:1}}><div style={{fontSize:10,color:"#888",letterSpacing:1,marginBottom:4}}>YELLOW</div><CardTapCell value={awayTeam.yellow} onInc={()=>incA("yellow")} cardColor="#f0c040"/></div>
+                <div style={{textAlign:"center",flex:1}}><div style={{fontSize:10,color:"#888",letterSpacing:1,marginBottom:4}}>RED</div><CardTapCell value={awayTeam.red} onInc={()=>incA("red")} cardColor="#c0392b"/></div>
+                <div style={{textAlign:"center",flex:1}}>
+                  <div style={{fontSize:10,color:"#888",letterSpacing:1,marginBottom:4}}>SUBS</div>
+                  <TapCell value={awayTeam.subs} onInc={()=>incA("subs")} color={awayTeam.subs>=5?"#555":"#fff"}/>
+                  {awayTeam.subs>=5&&<div style={{fontSize:9,color:"#c0392b",marginTop:2,letterSpacing:0.5}}>MAX</div>}
                 </div>
               </div>
             </div>
 
-            <div style={{ textAlign: "center", marginTop: 18, color: "#2a5a35", fontSize: 11, letterSpacing: 2 }}>
-              BENTLEIGH GREENS FC · MATCHDAY STATS
-            </div>
+            <div style={{textAlign:"center",marginTop:18,color:"#2a5a35",fontSize:11,letterSpacing:2}}>BENTLEIGH GREENS FC · MATCHDAY STATS</div>
           </div>
         </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
   </script>
-
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>{
         navigator.serviceWorker.register('./service-worker.js')
-          .then(reg => console.log('SW registered:', reg.scope))
-          .catch(err => console.warn('SW failed:', err));
+          .then(r=>console.log('SW:',r.scope))
+          .catch(e=>console.warn('SW failed:',e));
       });
     }
   </script>
