@@ -1,4 +1,4 @@
-const CACHE_NAME = 'game-day-v5';
+const CACHE_NAME = 'game-day-v6';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', event => {

@@ -1171,7 +1171,11 @@ function App() {
             {/* Player Off — from Starting XI */}
             <select
               value={subForm.out}
-              onChange={e => setSubForm(f => ({ ...f, out: e.target.value }))}
+              onChange={e => setSubForm(f => ({
+                ...f,
+                out: e.target.value,
+                minute: f.minute || String(Math.floor(elapsed / 60))
+              }))}
               style={{
                 background: "#0a1a0f", color: subForm.out ? "#c0392b" : "#555",
                 border: `1px solid ${BORDER}`, borderRadius: 6,
@@ -1189,7 +1193,11 @@ function App() {
             {/* Player On — from Bench */}
             <select
               value={subForm.in}
-              onChange={e => setSubForm(f => ({ ...f, in: e.target.value }))}
+              onChange={e => setSubForm(f => ({
+                ...f,
+                in: e.target.value,
+                minute: f.minute || String(Math.floor(elapsed / 60))
+              }))}
               style={{
                 background: "#0a1a0f", color: subForm.in ? ACCENT : "#555",
                 border: `1px solid ${BORDER}`, borderRadius: 6,
