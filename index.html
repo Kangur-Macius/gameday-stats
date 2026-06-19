@@ -616,6 +616,7 @@ function ReportPage({ homePlayers, homeTeamName, awayTeamName, homeFormation, aw
 }
 
 function HalfTimeReportOverlay({ homeTeamName, awayTeamName, isHomeGame, homeGoals, homeShotsTotal, homeShotsOn, homeFouls, homeYellow, homeRed, homeOffsides, homeCorners, awayTeam, onClose }) {
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const leftName  = isHomeGame ? homeTeamName : awayTeamName;
   const rightName = isHomeGame ? awayTeamName : homeTeamName;
   const leftScore = isHomeGame ? homeGoals : awayTeam.goals;
@@ -679,12 +680,21 @@ function HalfTimeReportOverlay({ homeTeamName, awayTeamName, isHomeGame, homeGoa
           </div>
         </div>
 
-        <button onClick={onClose} style={{
+        <button onClick={() => setConfirmingClose(true)} style={{
           marginTop: 18, width: "100%", background: ACCENT, color: "#0d1f15",
           border: "none", borderRadius: 8, padding: "12px 0", fontWeight: 900,
           cursor: "pointer", fontSize: 15, letterSpacing: 2, fontFamily: "'Impact',sans-serif"
         }}>CLOSE</button>
       </div>
+
+      {confirmingClose && (
+        <ConfirmDialog
+          message="Close the half time report?"
+          confirmLabel="Close"
+          onConfirm={onClose}
+          onCancel={() => setConfirmingClose(false)}
+        />
+      )}
     </div>
   );
 }
@@ -753,8 +763,19 @@ function App() {
 
   const incPlayer = (id, field) => {
     if (statsLocked) return;
+    const player = homePlayers.find(p => p.id === id);
+    if (field === "yellow" && player && player.yellow >= 2) return;
+    if (field === "red" && player && player.red >= 1) return;
     snapshot();
-    setHomePlayers(prev => prev.map(p => p.id === id ? { ...p, [field]: p[field] + 1 } : p));
+    setHomePlayers(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const updated = { ...p, [field]: p[field] + 1 };
+      // Second yellow automatically results in a red card (if not already given)
+      if (field === "yellow" && updated.yellow >= 2 && p.red < 1) {
+        updated.red = p.red + 1;
+      }
+      return updated;
+    }));
   };
 
   const incHomeTeam = (field) => { if (statsLocked) return; snapshot(); setHomeTeam(prev => ({ ...prev, [field]: prev[field] + 1 })); };
@@ -1068,14 +1089,14 @@ function App() {
                 <tr style={{ color: "#7ab890", fontSize: 10 }}>
                   <th style={th}>#</th>
                   <th style={{ ...th, textAlign: "left" }}>Name</th>
-                  <th style={th}>⚽</th>
-                  <th style={th}>Ast</th>
                   <th style={th}>On</th>
                   <th style={th}>Off</th>
+                  <th style={th}>⚽</th>
+                  <th style={th}>Ast</th>
                   <th style={th}>Foul</th>
+                  <th style={th}>Offside</th>
                   <th style={th}>🟨</th>
                   <th style={th}>🟥</th>
-                  <th style={th}>Offside</th>
                 </tr>
               </thead>
               <tbody>
@@ -1086,14 +1107,14 @@ function App() {
                   }}>
                     <td style={{ ...td, color: p.role === "gk" ? GOLD : ACCENT, fontWeight: 700 }}>{p.number}</td>
                     <td style={{ ...td, textAlign: "left", color: p.role === "gk" ? GOLD : "#e8f5ee", fontWeight: p.role === "gk" ? 700 : 400 }}>{p.name || (p.role === "gk" ? "GK" : `Player ${p.number}`)}</td>
-                    <td style={td}><TapCell value={p.goals}     onInc={() => incPlayer(p.id, "goals")}     color={ACCENT} /></td>
-                    <td style={td}><TapCell value={p.assists}   onInc={() => incPlayer(p.id, "assists")}   color="#a29bfe" /></td>
                     <td style={td}><TapCell value={p.shots}     onInc={() => incPlayer(p.id, "shots")}     color="#5dade2" /></td>
                     <td style={td}><TapCell value={p.offtarget} onInc={() => incPlayer(p.id, "offtarget")} color="#8e99a4" /></td>
+                    <td style={td}><TapCell value={p.goals}     onInc={() => incPlayer(p.id, "goals")}     color={ACCENT} /></td>
+                    <td style={td}><TapCell value={p.assists}   onInc={() => incPlayer(p.id, "assists")}   color="#a29bfe" /></td>
                     <td style={td}><TapCell value={p.fouls}     onInc={() => incPlayer(p.id, "fouls")}     color="#e67e22" /></td>
+                    <td style={td}><TapCell value={p.offsides}  onInc={() => incPlayer(p.id, "offsides")}  color="#e74c3c" /></td>
                     <td style={td}><CardTapCell value={p.yellow}   onInc={() => incPlayer(p.id, "yellow")}   cardColor="#f0c040" /></td>
                     <td style={td}><CardTapCell value={p.red}      onInc={() => incPlayer(p.id, "red")}      cardColor="#c0392b" /></td>
-                    <td style={td}><TapCell value={p.offsides}  onInc={() => incPlayer(p.id, "offsides")}  color="#e74c3c" /></td>
                   </tr>
                 ))}
               </tbody>
@@ -1110,14 +1131,14 @@ function App() {
                 <tr style={{ color: "#7ab890", fontSize: 10 }}>
                   <th style={th}>#</th>
                   <th style={{ ...th, textAlign: "left" }}>Name</th>
-                  <th style={th}>⚽</th>
-                  <th style={th}>Ast</th>
                   <th style={th}>On</th>
                   <th style={th}>Off</th>
+                  <th style={th}>⚽</th>
+                  <th style={th}>Ast</th>
                   <th style={th}>Foul</th>
+                  <th style={th}>Offside</th>
                   <th style={th}>🟨</th>
                   <th style={th}>🟥</th>
-                  <th style={th}>Offside</th>
                 </tr>
               </thead>
               <tbody>
@@ -1128,14 +1149,14 @@ function App() {
                   }}>
                     <td style={{ ...td, color: p.role === "gk" ? GOLD : ACCENT, fontWeight: 700 }}>{p.number}</td>
                     <td style={{ ...td, textAlign: "left", color: p.role === "gk" ? GOLD : "#e8f5ee", fontWeight: p.role === "gk" ? 700 : 400 }}>{p.name || (p.role === "gk" ? "GK" : `Sub ${i + 1}`)}</td>
-                    <td style={td}><TapCell value={p.goals}     onInc={() => incPlayer(p.id, "goals")}     color={ACCENT} /></td>
-                    <td style={td}><TapCell value={p.assists}   onInc={() => incPlayer(p.id, "assists")}   color="#a29bfe" /></td>
                     <td style={td}><TapCell value={p.shots}     onInc={() => incPlayer(p.id, "shots")}     color="#5dade2" /></td>
                     <td style={td}><TapCell value={p.offtarget} onInc={() => incPlayer(p.id, "offtarget")} color="#8e99a4" /></td>
+                    <td style={td}><TapCell value={p.goals}     onInc={() => incPlayer(p.id, "goals")}     color={ACCENT} /></td>
+                    <td style={td}><TapCell value={p.assists}   onInc={() => incPlayer(p.id, "assists")}   color="#a29bfe" /></td>
                     <td style={td}><TapCell value={p.fouls}     onInc={() => incPlayer(p.id, "fouls")}     color="#e67e22" /></td>
+                    <td style={td}><TapCell value={p.offsides}  onInc={() => incPlayer(p.id, "offsides")}  color="#e74c3c" /></td>
                     <td style={td}><CardTapCell value={p.yellow}   onInc={() => incPlayer(p.id, "yellow")}   cardColor="#f0c040" /></td>
                     <td style={td}><CardTapCell value={p.red}      onInc={() => incPlayer(p.id, "red")}      cardColor="#c0392b" /></td>
-                    <td style={td}><TapCell value={p.offsides}  onInc={() => incPlayer(p.id, "offsides")}  color="#e74c3c" /></td>
                   </tr>
                 ))}
               </tbody>
