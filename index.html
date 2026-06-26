@@ -33,8 +33,8 @@
 
 const GK_NAMES = ["", "Yianni", "Luka", "Harry", "Sam", "Kai", "Konnor"];
 const OUTFIELD_NAMES = [
-  "", "Andreas", "Ante", "Aydin", "Ben", "Brady", "Bryn", "Dimmi", "Hudson",
-  "Huss", "Jack", "Jamie", "Jimmy", "Johnny", "Kaz", "Mani", "Nicky",
+  "", "Andreas", "Ante", "Aydin", "Ben", "Brady", "Bryn", "Deng", "Hamish",
+  "Hudson", "Huss", "Jack", "Jamie", "Jimmy", "Johnny", "Kaz", "Mani", "Nicky",
   "Novak", "Raph", "Roger", "Ryan", "Sam G", "Sam S", "Sarp", "Will", "Zion"
 ];
 
@@ -89,7 +89,7 @@ const initialSubs17 = [
 ];
 
 const initialHomePlayers = [...initialStarting, ...initialSubs17];
-const initialHomeTeamStats = { corners: 0 };
+const initialHomeTeamStats = { corners: 0, subs: 0 };
 const initialAwayTeamStats = { goals: 0, shotsOn: 0, shotsOff: 0, corners: 0, fouls: 0, yellow: 0, red: 0, offsides: 0, subs: 0 };
 
 const BG_GREEN = "#1a7a3c";
@@ -615,6 +615,17 @@ function ReportPage({ homePlayers, homeTeamName, awayTeamName, homeFormation, aw
   );
 }
 
+function SubsIcon() {
+  return (
+    <svg viewBox="0 0 26 22" width="26" height="22">
+      {/* Green up arrow (left) */}
+      <polygon points="2,14 6,14 6,20 10,20 10,14 14,14 8,5" fill="#2ecc71"/>
+      {/* Red down arrow (right) */}
+      <polygon points="12,8 16,8 16,2 20,2 20,8 24,8 18,17" fill="#c0392b"/>
+    </svg>
+  );
+}
+
 function HalfTimeReportOverlay({ homeTeamName, awayTeamName, isHomeGame, homeGoals, homeShotsTotal, homeShotsOn, homeFouls, homeYellow, homeRed, homeOffsides, homeCorners, awayTeam, onClose }) {
   const [confirmingClose, setConfirmingClose] = useState(false);
   const leftName  = isHomeGame ? homeTeamName : awayTeamName;
@@ -699,6 +710,29 @@ function HalfTimeReportOverlay({ homeTeamName, awayTeamName, isHomeGame, homeGoa
   );
 }
 
+const HOME_STATS = [
+  { key: "goals",     label: "⚽ Goal" },
+  { key: "shots",     label: "🦶 Shot On" },
+  { key: "offtarget", label: "🦶 Shot Off" },
+  { key: "assists",   label: "🤝 Assist" },
+  { key: "fouls",     label: "🔔 Foul" },
+  { key: "yellow",    label: "🟨 Yellow Card" },
+  { key: "red",       label: "🟥 Red Card" },
+  { key: "offsides",  label: "🚩 Offside" },
+];
+
+const AWAY_STATS = [
+  { key: "goals",    label: "⚽ Goal" },
+  { key: "shotsOn",  label: "🦶 Shot On" },
+  { key: "shotsOff", label: "🦶 Shot Off" },
+  { key: "fouls",    label: "🔔 Foul" },
+  { key: "yellow",   label: "🟨 Yellow Card" },
+  { key: "red",      label: "🟥 Red Card" },
+  { key: "offsides", label: "🚩 Offside" },
+  { key: "corners",  label: "📐 Corner" },
+  { key: "subs",     label: "🔄 Sub" },
+];
+
 function App() {
   const [homePlayers, setHomePlayers] = useState(initialHomePlayers);
   const [homeTeam, setHomeTeam] = useState(initialHomeTeamStats);
@@ -710,6 +744,9 @@ function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showEndHalfConfirm, setShowEndHalfConfirm] = useState(false);
   const [showHalfTimeReport, setShowHalfTimeReport] = useState(false);
+  const [eventStep, setEventStep] = useState(null); // null | "team" | "stat" | "player"
+  const [eventTeam, setEventTeam] = useState(null); // "home" | "away"
+  const [eventStat, setEventStat] = useState(null); // e.g. "goals"
   const [half, setHalf] = useState("pre"); // "pre" | "h1running" | "h1ended" | "h2running" | "full_time"
   const [homeTeamName, setHomeTeamName] = useState("Bentleigh Greens");
   const [awayTeamName, setAwayTeamName] = useState("Away Team");
@@ -781,7 +818,6 @@ function App() {
   const incHomeTeam = (field) => { if (statsLocked) return; snapshot(); setHomeTeam(prev => ({ ...prev, [field]: prev[field] + 1 })); };
   const incAway = (field) => {
     if (statsLocked) return;
-    if (field === "subs" && awayTeam.subs >= 5) return;
     snapshot();
     setAwayTeam(prev => ({ ...prev, [field]: prev[field] + 1 }));
   };
@@ -909,6 +945,101 @@ function App() {
         />
       )}
 
+      {/* EVENT POPUP */}
+      {eventStep && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16
+        }}>
+          <div style={{
+            background: CARD_BG, border: `2px solid ${ACCENT}`, borderRadius: 14,
+            padding: "20px 16px", maxWidth: 340, width: "100%"
+          }}>
+            {/* STEP 1 — pick team */}
+            {eventStep === "team" && (
+              <>
+                <div style={{ textAlign: "center", fontFamily: "'Impact',sans-serif", color: ACCENT, fontSize: 20, letterSpacing: 3, marginBottom: 16 }}>SELECT TEAM</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <button onClick={() => { setEventTeam("home"); setEventStep("stat"); }} style={{
+                    background: "#0e3a20", color: ACCENT, border: `2px solid ${ACCENT}`,
+                    borderRadius: 8, padding: "12px 0", fontWeight: 700, fontSize: 15, cursor: "pointer"
+                  }}>🟢 {homeTeamName}</button>
+                  <button onClick={() => { setEventTeam("away"); setEventStep("stat"); }} style={{
+                    background: "#1a1a0d", color: "#fff", border: `2px solid #555`,
+                    borderRadius: 8, padding: "12px 0", fontWeight: 700, fontSize: 15, cursor: "pointer"
+                  }}>⚪ {awayTeamName}</button>
+                  <button onClick={() => { setEventStep(null); setEventTeam(null); setEventStat(null); }} style={{
+                    background: "#1a1a1a", color: "#666", border: "1px solid #333",
+                    borderRadius: 8, padding: "10px 0", fontWeight: 700, fontSize: 14, cursor: "pointer"
+                  }}>Cancel</button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 2 — pick stat */}
+            {eventStep === "stat" && (
+              <>
+                <div style={{ textAlign: "center", fontFamily: "'Impact',sans-serif", color: ACCENT, fontSize: 20, letterSpacing: 3, marginBottom: 4 }}>SELECT STAT</div>
+                <div style={{ textAlign: "center", color: "#888", fontSize: 12, marginBottom: 14 }}>
+                  {eventTeam === "home" ? `🟢 ${homeTeamName}` : `⚪ ${awayTeamName}`}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(eventTeam === "home" ? HOME_STATS : AWAY_STATS).map(s => (
+                    <button key={s.key} onClick={() => {
+                      if (eventTeam === "away") {
+                        incAway(s.key);
+                        setEventStep(null); setEventTeam(null); setEventStat(null);
+                      } else {
+                        setEventStat(s.key);
+                        setEventStep("player");
+                      }
+                    }} style={{
+                      background: "#0e2218", color: "#e8f5ee", border: `1px solid ${BORDER}`,
+                      borderRadius: 7, padding: "10px 14px", fontWeight: 600, fontSize: 14,
+                      cursor: "pointer", textAlign: "left"
+                    }}>{s.label}</button>
+                  ))}
+                  <button onClick={() => { setEventStep("team"); setEventStat(null); }} style={{
+                    background: "#1a1a1a", color: "#666", border: "1px solid #333",
+                    borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 13, cursor: "pointer", marginTop: 4
+                  }}>← Back</button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 3 — pick player (home only) */}
+            {eventStep === "player" && (
+              <>
+                <div style={{ textAlign: "center", fontFamily: "'Impact',sans-serif", color: ACCENT, fontSize: 20, letterSpacing: 3, marginBottom: 4 }}>SELECT PLAYER</div>
+                <div style={{ textAlign: "center", color: "#888", fontSize: 12, marginBottom: 14 }}>
+                  {HOME_STATS.find(s => s.key === eventStat)?.label}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
+                  {homePlayers.slice(0, 11).map(p => (
+                    <button key={p.id} onClick={() => {
+                      incPlayer(p.id, eventStat);
+                      setEventStep(null); setEventTeam(null); setEventStat(null);
+                    }} style={{
+                      background: "#0e2218", color: p.role === "gk" ? GOLD : "#e8f5ee",
+                      border: `1px solid ${BORDER}`, borderRadius: 7,
+                      padding: "9px 14px", fontWeight: p.role === "gk" ? 700 : 500,
+                      fontSize: 14, cursor: "pointer", textAlign: "left"
+                    }}>
+                      <span style={{ color: p.role === "gk" ? GOLD : ACCENT, fontWeight: 700, marginRight: 8 }}>{p.number}</span>
+                      {p.name || (p.role === "gk" ? "GK" : `Player ${p.number}`)}
+                    </button>
+                  ))}
+                  <button onClick={() => { setEventStep("stat"); }} style={{
+                    background: "#1a1a1a", color: "#666", border: "1px solid #333",
+                    borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 13, cursor: "pointer", marginTop: 4
+                  }}>← Back</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* TOP TITLE BAR */}
       <div style={{
         background: `linear-gradient(135deg, ${BG_GREEN} 0%, #0d3320 100%)`,
@@ -1030,6 +1161,18 @@ function App() {
             Undo {history.length > 0 && <span style={{ fontSize: 10, opacity: 0.7 }}>({history.length})</span>}
           </button>
         </div>
+
+        {/* EVENT button — full width, shown during live play */}
+        {(half === "h1running" || half === "h2running") && (
+          <div style={{ padding: "8px 16px 4px" }}>
+            <button onClick={() => setEventStep("team")} style={{
+              width: "100%", background: "#1a3a5a", color: "#7ab8f5",
+              border: "2px solid #2a5a8a", borderRadius: 8,
+              padding: "10px 0", fontWeight: 900, cursor: "pointer", fontSize: 15,
+              letterSpacing: 2, fontFamily: "'Impact',sans-serif"
+            }}>⚡ EVENT</button>
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "14px 12px", maxWidth: 720, margin: "0 auto" }}>
@@ -1053,29 +1196,109 @@ function App() {
         <div style={{ background: CARD_BG, borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: `1px solid ${BORDER}` }}>
           {sectionHeader(`🟢 ${ourLabel} — Team Totals`)}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            {/* Shots — special display: total (on target) */}
+            {/* Shots */}
             <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ fontSize: 10, color: "#7ab890", letterSpacing: 1, marginBottom: 2 }}>SHOTS</div>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>🦶</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", display: "flex", alignItems: "baseline", justifyContent: "center", gap: 3 }}>
                 <span>{homeShotsTotal}</span>
                 <span style={{ fontSize: 13, color: "#5dade2", fontWeight: 600 }}>({homeShotsOn})</span>
               </div>
             </div>
             {[
-              { label: "Fouls",    value: homeFouls },
-              { label: "Yellow",   value: homeYellow },
-              { label: "Red",      value: homeRed },
-              { label: "Offsides", value: homeOffsides },
-            ].map(s => (
-              <div key={s.label} style={{ textAlign: "center", flex: 1 }}>
-                <div style={{ fontSize: 10, color: "#7ab890", letterSpacing: 1, marginBottom: 2 }}>{s.label.toUpperCase()}</div>
+              { icon: <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" style={{color:"#e8f5ee"}}>
+                  <path d="M3.76 3.7L2.14 4.88L4.43 8A8.23 8.23 0 0 1 6.35 7.28M11 9V11H18V11.29L13 12.71V15.5A4.5 4.5 0 1 1 8.5 11H9V9H8.5A6.5 6.5 0 1 0 15 15.5V13.91L22 12V9M16.24 3.7L13.85 7H16.32L17.86 4.88M9 2V7H11V2Z" />
+                </svg>,  value: homeFouls },
+              { icon: "🟨",  value: homeYellow },
+              { icon: "🟥",  value: homeRed },
+              { icon: <svg viewBox="0 0 24 24" width="22" height="22">
+                  <line x1="4" y1="2" x2="4" y2="22" stroke="#e8f5ee" strokeWidth="1.8" strokeLinecap="round"/>
+                  <rect x="4" y="2" width="5" height="5" fill="#f0c040"/>
+                  <rect x="9" y="2" width="5" height="5" fill="#c0392b"/>
+                  <rect x="4" y="7" width="5" height="5" fill="#c0392b"/>
+                  <rect x="9" y="7" width="5" height="5" fill="#f0c040"/>
+                </svg>,  value: homeOffsides },
+            ].map((s, i) => (
+              <div key={i} style={{ textAlign: "center", flex: 1 }}>
+                <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>{s.icon}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>{s.value}</div>
               </div>
             ))}
+            {/* Corners */}
             <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ fontSize: 10, color: "#7ab890", letterSpacing: 1, marginBottom: 2 }}>CORNERS</div>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>📐</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", cursor: "pointer", userSelect: "none", display: "inline-block", borderRadius: 5, padding: "0 6px" }}
                 onClick={() => incHomeTeam("corners")}>{homeTeam.corners}</div>
+            </div>
+            {/* Subs */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}><SubsIcon /></div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", cursor: "pointer", userSelect: "none", display: "inline-block", borderRadius: 5, padding: "0 6px" }}
+                onClick={() => incHomeTeam("subs")}>{homeTeam.subs}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* AWAY TEAM */}
+        <div style={{ background: CARD_BG, borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: `1px solid ${BORDER}` }}>
+          {sectionHeader(`⚪ ${theirLabel} — Team Stats`)}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            {/* Shots */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>🦶</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", display: "flex", alignItems: "baseline", justifyContent: "center", gap: 3 }}>
+                <span style={{ cursor: "pointer", userSelect: "none" }} onClick={() => incAway("shotsOff")}>{awayTeam.shotsOn + awayTeam.shotsOff}</span>
+                <span style={{ fontSize: 13, color: "#5dade2", fontWeight: 600, cursor: "pointer", userSelect: "none" }} onClick={() => incAway("shotsOn")}>({awayTeam.shotsOn})</span>
+              </div>
+            </div>
+            {/* Fouls */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" style={{color:"#e8f5ee"}}>
+                  <path d="M3.76 3.7L2.14 4.88L4.43 8A8.23 8.23 0 0 1 6.35 7.28M11 9V11H18V11.29L13 12.71V15.5A4.5 4.5 0 1 1 8.5 11H9V9H8.5A6.5 6.5 0 1 0 15 15.5V13.91L22 12V9M16.24 3.7L13.85 7H16.32L17.86 4.88M9 2V7H11V2Z" />
+                </svg>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", cursor: "pointer", userSelect: "none" }} onClick={() => incAway("fouls")}>{awayTeam.fouls}</div>
+            </div>
+            {/* Yellow */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>🟨</div>
+              <div style={{ fontSize: 22, fontWeight: 700, cursor: "pointer", userSelect: "none" }} onClick={() => incAway("yellow")}>
+                {awayTeam.yellow > 0
+                  ? <span style={{ background: "#f0c040", color: "#000", borderRadius: 4, padding: "0 8px" }}>{awayTeam.yellow}</span>
+                  : <span style={{ color: "#fff" }}>0</span>}
+              </div>
+            </div>
+            {/* Red */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>🟥</div>
+              <div style={{ fontSize: 22, fontWeight: 700, cursor: "pointer", userSelect: "none" }} onClick={() => incAway("red")}>
+                {awayTeam.red > 0
+                  ? <span style={{ background: "#c0392b", color: "#fff", borderRadius: 4, padding: "0 8px" }}>{awayTeam.red}</span>
+                  : <span style={{ color: "#fff" }}>0</span>}
+              </div>
+            </div>
+            {/* Offsides */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>
+                <svg viewBox="0 0 24 24" width="22" height="22">
+                  <line x1="4" y1="2" x2="4" y2="22" stroke="#e8f5ee" strokeWidth="1.8" strokeLinecap="round"/>
+                  <rect x="4" y="2" width="5" height="5" fill="#f0c040"/>
+                  <rect x="9" y="2" width="5" height="5" fill="#c0392b"/>
+                  <rect x="4" y="7" width="5" height="5" fill="#c0392b"/>
+                  <rect x="9" y="7" width="5" height="5" fill="#f0c040"/>
+                </svg>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", cursor: "pointer", userSelect: "none" }} onClick={() => incAway("offsides")}>{awayTeam.offsides}</div>
+            </div>
+            {/* Corners */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}>📐</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", cursor: "pointer", userSelect: "none" }} onClick={() => incAway("corners")}>{awayTeam.corners}</div>
+            </div>
+            {/* Subs */}
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ fontSize: 16, marginBottom: 2, display: "flex", justifyContent: "center", alignItems: "center", height: 22 }}><SubsIcon /></div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", cursor: "pointer", userSelect: "none" }} onClick={() => incAway("subs")}>{awayTeam.subs}</div>
             </div>
           </div>
         </div>
@@ -1236,49 +1459,6 @@ function App() {
               <button onClick={() => removeSub(s.id)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 16 }}>×</button>
             </div>
           ))}
-        </div>
-
-        {/* AWAY TEAM */}
-        <div style={{ background: "#1a1a0d", borderRadius: 10, padding: "12px 14px", border: `1px solid #3a3a1a` }}>
-          {sectionHeader(`${theirLabel} — Team Stats`)}
-          {/* Row 1: Goals, On Target, Off Target, Corners, Fouls, Offsides */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-            {[
-              { label: "Goals",    field: "goals",    color: "#fff" },
-              { label: "On T",     field: "shotsOn",  color: "#5dade2" },
-              { label: "Off T",    field: "shotsOff", color: "#8e99a4" },
-              { label: "Corners",  field: "corners",  color: "#fff" },
-              { label: "Fouls",    field: "fouls",    color: "#fff" },
-              { label: "Offsides", field: "offsides", color: "#fff" },
-            ].map(s => (
-              <div key={s.field} style={{ textAlign: "center", flex: 1 }}>
-                <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>{s.label.toUpperCase()}</div>
-                <TapCell value={awayTeam[s.field]} onInc={() => incAway(s.field)} color={s.color} />
-              </div>
-            ))}
-          </div>
-          {/* Row 2: Yellow, Red, Subs */}
-          <div style={{ display: "flex", justifyContent: "space-around", alignItems: "flex-start" }}>
-            <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>YELLOW</div>
-              <CardTapCell value={awayTeam.yellow} onInc={() => incAway("yellow")} cardColor="#f0c040" />
-            </div>
-            <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>RED</div>
-              <CardTapCell value={awayTeam.red} onInc={() => incAway("red")} cardColor="#c0392b" />
-            </div>
-            <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 4 }}>SUBS</div>
-              <TapCell
-                value={awayTeam.subs}
-                onInc={() => incAway("subs")}
-                color={awayTeam.subs >= 5 ? "#555" : "#fff"}
-              />
-              {awayTeam.subs >= 5 && (
-                <div style={{ fontSize: 9, color: "#c0392b", marginTop: 2, letterSpacing: 0.5 }}>MAX</div>
-              )}
-            </div>
-          </div>
         </div>
 
         <div style={{ textAlign: "center", marginTop: 18, color: "#2a5a35", fontSize: 11, letterSpacing: 2 }}>
