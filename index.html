@@ -33,8 +33,8 @@
 
 const GK_NAMES = ["", "Yianni", "Luka", "Harry", "Kai", "Konnor"];
 const OUTFIELD_NAMES = [
-  "", "Alex", "Andreas", "Ante", "Ben", "Brady", "Bryn", "Deng", "Dom", "Hamish",
-  "Hudson", "Huss", "Jack", "Jamie", "Jimmy", "Johnny", "Kaz", "Kirk", "Mani", "Nicky",
+  "", "Akoch", "Alex", "Andreas", "Ante", "Ben", "Brady", "Bryn", "Deng", "Dom", "Hamish",
+  "Hudson", "Huss", "Jack", "Jamie", "Jimmy", "Johnny", "Kaz", "Kirk", "Mani", "Michael", "Nathan", "Nicky",
   "Novak", "Raph", "Roger", "Sam G", "Sam S", "Sarp", "Will", "Zion", "Other"
 ];
 
@@ -89,8 +89,8 @@ const initialSubs17 = [
 ];
 
 const initialHomePlayers = [...initialStarting, ...initialSubs17];
-const initialHomeTeamStats = { corners: 0, subs: 0, penalties: 0 };
-const initialAwayTeamStats = { goals: 0, shotsOn: 0, shotsOff: 0, corners: 0, fouls: 0, yellow: 0, red: 0, offsides: 0, subs: 0, penalties: 0 };
+const initialHomeTeamStats = { corners: 0, subs: 0, penalties: 0, insideBox: 0, outsideBox: 0, entry18: 0 };
+const initialAwayTeamStats = { goals: 0, shotsOn: 0, shotsOff: 0, corners: 0, fouls: 0, yellow: 0, red: 0, offsides: 0, subs: 0, penalties: 0, insideBox: 0, outsideBox: 0, entry18: 0 };
 
 const BG_GREEN = "#1a7a3c";
 const BG_DARK = "#0d1f15";
@@ -481,6 +481,9 @@ function ReportPage({ homePlayers, homeTeamName, awayTeamName, homeFormation, aw
               { label: "Goals",       value: homeGoals },
               { label: "Assists",     value: homeAssists },
               { label: "Shots",       value: `${homeShotsTotal} (${homeShotsOn})` },
+              { label: "In Box",      value: homeTeam.insideBox },
+              { label: "Out Box",     value: homeTeam.outsideBox },
+              { label: "Entry 18",    value: homeTeam.entry18 },
               { label: "Corners",     value: homeTeam.corners },
               { label: "Penalties",   value: homeTeam.penalties },
               { label: "Fouls",       value: homeFouls },
@@ -590,6 +593,9 @@ function ReportPage({ homePlayers, homeTeamName, awayTeamName, homeFormation, aw
               { label: "Goals",     value: awayTeam.goals },
               { label: "On T",      value: awayTeam.shotsOn },
               { label: "Off T",     value: awayTeam.shotsOff },
+              { label: "In Box",    value: awayTeam.insideBox },
+              { label: "Out Box",   value: awayTeam.outsideBox },
+              { label: "Entry 18",  value: awayTeam.entry18 },
               { label: "Corners",   value: awayTeam.corners },
               { label: "Penalties", value: awayTeam.penalties },
               { label: "Fouls",     value: awayTeam.fouls },
@@ -628,7 +634,7 @@ function SubsIcon() {
   );
 }
 
-function HalfTimeReportOverlay({ homeTeamName, awayTeamName, isHomeGame, homeGoals, homeShotsTotal, homeShotsOn, homeFouls, homeYellow, homeRed, homeOffsides, homeCorners, homePenalties, awayTeam, onClose }) {
+function HalfTimeReportOverlay({ homeTeamName, awayTeamName, isHomeGame, homeGoals, homeShotsTotal, homeShotsOn, homeFouls, homeYellow, homeRed, homeOffsides, homeCorners, homePenalties, homeInsideBox, homeOutsideBox, homeEntry18, awayTeam, onClose }) {
   const [confirmingClose, setConfirmingClose] = useState(false);
   const leftName  = isHomeGame ? homeTeamName : awayTeamName;
   const rightName = isHomeGame ? awayTeamName : homeTeamName;
@@ -682,6 +688,9 @@ function HalfTimeReportOverlay({ homeTeamName, awayTeamName, isHomeGame, homeGoa
         {/* Team totals comparison */}
         <div style={{ background: "#0e2218", borderRadius: 8, padding: "4px 10px" }}>
           <StatRow label="Shots" home={`${homeShotsTotal} (${homeShotsOn})`} away={`${awayTeam.shotsOn + awayTeam.shotsOff} (${awayTeam.shotsOn})`} />
+          <StatRow label="In Box" home={homeInsideBox} away={awayTeam.insideBox} />
+          <StatRow label="Out Box" home={homeOutsideBox} away={awayTeam.outsideBox} />
+          <StatRow label="Entry 18" home={homeEntry18} away={awayTeam.entry18} />
           <StatRow label="Corners" home={homeCorners} away={awayTeam.corners} />
           <StatRow label="Penalties" home={homePenalties} away={awayTeam.penalties} />
           <StatRow label="Fouls" home={homeFouls} away={awayTeam.fouls} />
@@ -717,9 +726,7 @@ const YellowCardIcon = () => <svg viewBox="0 0 18 24" width="11" height="16" sty
 const RedCardIcon    = () => <svg viewBox="0 0 18 24" width="11" height="16" style={{verticalAlign:"middle",marginRight:4}}><rect x="1" y="1" width="16" height="22" rx="2" fill="#c0392b"/></svg>;
 
 const HOME_STATS = [
-  { key: "goals",     label: "⚽ Goal" },
-  { key: "shots",     label: "🦶 Shot On" },
-  { key: "offtarget", label: "🦶 Shot Off" },
+  { key: "shot",      label: "🦶 Shot", shotFlow: true },
   { key: "assists",   label: "🤝 Assist" },
   { key: "fouls",     label: "🔔 Foul" },
   { key: "yellow",    label: "🟨 Yellow Card" },
@@ -727,12 +734,11 @@ const HOME_STATS = [
   { key: "offsides",  label: "🚩 Offside" },
   { key: "corners",   label: "📐 Corner", team: true },
   { key: "penalties", label: "🎯 Penalty", team: true },
+  { key: "entry18",   label: "⬛ Entry 18 Yd", team: true },
 ];
 
 const AWAY_STATS = [
-  { key: "goals",     label: "⚽ Goal" },
-  { key: "shotsOn",   label: "🦶 Shot On" },
-  { key: "shotsOff",  label: "🦶 Shot Off" },
+  { key: "shot",      label: "🦶 Shot", shotFlow: true },
   { key: "fouls",     label: "🔔 Foul" },
   { key: "yellow",    label: "🟨 Yellow Card" },
   { key: "red",       label: "🟥 Red Card" },
@@ -740,6 +746,7 @@ const AWAY_STATS = [
   { key: "corners",   label: "📐 Corner" },
   { key: "subs",      label: "🔄 Sub" },
   { key: "penalties", label: "🎯 Penalty" },
+  { key: "entry18",   label: "⬛ Entry 18 Yd" },
 ];
 
 function App() {
@@ -757,6 +764,7 @@ function App() {
   const [eventStep, setEventStep] = useState(null); // null | "team" | "stat" | "player"
   const [eventTeam, setEventTeam] = useState(null); // "home" | "away"
   const [eventStat, setEventStat] = useState(null); // e.g. "goals"
+  const [shotDetail, setShotDetail] = useState(null); // { onTarget: bool|null, insideBox: bool|null, goal: bool }
   const [half, setHalf] = useState("pre"); // "pre" | "h1running" | "h1ended" | "h2running" | "full_time"
   const [homeTeamName, setHomeTeamName] = useState("Bentleigh Greens");
   const [awayTeamName, setAwayTeamName] = useState("Away Team");
@@ -830,6 +838,41 @@ function App() {
     if (statsLocked) return;
     snapshot();
     setAwayTeam(prev => ({ ...prev, [field]: prev[field] + 1 }));
+  };
+
+  // Apply a completed shot for the opposition (team-level)
+  const applyAwayShot = (detail) => {
+    if (statsLocked) return;
+    snapshot();
+    setAwayTeam(prev => {
+      const next = { ...prev };
+      if (detail.onTarget) next.shotsOn = prev.shotsOn + 1;
+      else next.shotsOff = prev.shotsOff + 1;
+      if (detail.insideBox) next.insideBox = prev.insideBox + 1;
+      else next.outsideBox = prev.outsideBox + 1;
+      if (detail.goal && detail.onTarget) next.goals = prev.goals + 1;
+      return next;
+    });
+  };
+
+  // Apply a completed shot for a Bentleigh player
+  const applyHomeShot = (playerId, detail) => {
+    if (statsLocked) return;
+    snapshot();
+    setHomePlayers(prev => prev.map(p => {
+      if (p.id !== playerId) return p;
+      const updated = { ...p };
+      if (detail.onTarget) updated.shots = p.shots + 1;
+      else updated.offtarget = p.offtarget + 1;
+      if (detail.goal && detail.onTarget) updated.goals = p.goals + 1;
+      return updated;
+    }));
+    // Box counts are team-level
+    setHomeTeam(prev => ({
+      ...prev,
+      insideBox: detail.insideBox ? prev.insideBox + 1 : prev.insideBox,
+      outsideBox: !detail.insideBox ? prev.outsideBox + 1 : prev.outsideBox,
+    }));
   };
 
   const addSub = () => {
@@ -980,6 +1023,9 @@ function App() {
           homeOffsides={homeOffsides}
           homeCorners={homeTeam.corners}
           homePenalties={homeTeam.penalties}
+          homeInsideBox={homeTeam.insideBox}
+          homeOutsideBox={homeTeam.outsideBox}
+          homeEntry18={homeTeam.entry18}
           awayTeam={awayTeam}
           onClose={() => setShowHalfTimeReport(false)}
         />
@@ -1026,7 +1072,11 @@ function App() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {(eventTeam === "home" ? HOME_STATS : AWAY_STATS).map(s => (
                     <button key={s.key} onClick={() => {
-                      if (eventTeam === "away") {
+                      if (s.shotFlow) {
+                        // Start the shot detail flow (both teams)
+                        setShotDetail({ onTarget: null, insideBox: null, goal: false });
+                        setEventStep("shot");
+                      } else if (eventTeam === "away") {
                         incAway(s.key);
                         setEventStep(null); setEventTeam(null); setEventStat(null);
                       } else if (s.team) {
@@ -1051,18 +1101,99 @@ function App() {
               </>
             )}
 
+            {/* STEP 2b — shot detail */}
+            {eventStep === "shot" && shotDetail && (
+              <>
+                <div style={{ textAlign: "center", fontFamily: "'Impact',sans-serif", color: ACCENT, fontSize: 20, letterSpacing: 3, marginBottom: 4 }}>SHOT DETAIL</div>
+                <div style={{ textAlign: "center", color: "#888", fontSize: 12, marginBottom: 14 }}>
+                  {eventTeam === "home" ? `🟢 ${homeTeamName}` : `⚪ ${awayTeamName}`}
+                </div>
+
+                {/* Row 1: On / Off target */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  {[{ label: "On Target", val: true }, { label: "Off Target", val: false }].map(o => (
+                    <button key={o.label} onClick={() => setShotDetail(d => ({
+                      ...d, onTarget: o.val, goal: o.val ? d.goal : false
+                    }))} style={{
+                      flex: 1, padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: "pointer",
+                      border: `2px solid ${shotDetail.onTarget === o.val ? ACCENT : BORDER}`,
+                      background: shotDetail.onTarget === o.val ? "#0e3a20" : "#0a1a0f",
+                      color: shotDetail.onTarget === o.val ? ACCENT : "#888"
+                    }}>{o.label}</button>
+                  ))}
+                </div>
+
+                {/* Row 2: Inside / Outside box */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  {[{ label: "Inside the Box", val: true }, { label: "Outside the Box", val: false }].map(o => (
+                    <button key={o.label} onClick={() => setShotDetail(d => ({ ...d, insideBox: o.val }))} style={{
+                      flex: 1, padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      border: `2px solid ${shotDetail.insideBox === o.val ? "#5dade2" : BORDER}`,
+                      background: shotDetail.insideBox === o.val ? "#0e2a3a" : "#0a1a0f",
+                      color: shotDetail.insideBox === o.val ? "#5dade2" : "#888"
+                    }}>{o.label}</button>
+                  ))}
+                </div>
+
+                {/* Row 3: Goal — dimmed if off target */}
+                <button
+                  onClick={() => { if (shotDetail.onTarget) setShotDetail(d => ({ ...d, goal: !d.goal })); }}
+                  disabled={!shotDetail.onTarget}
+                  style={{
+                    width: "100%", padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 15,
+                    marginBottom: 8, letterSpacing: 1,
+                    cursor: shotDetail.onTarget ? "pointer" : "default",
+                    opacity: shotDetail.onTarget ? 1 : 0.25,
+                    border: `2px solid ${shotDetail.goal ? ACCENT : BORDER}`,
+                    background: shotDetail.goal ? ACCENT : "#0a1a0f",
+                    color: shotDetail.goal ? "#0d1f15" : "#888"
+                  }}>⚽ GOAL</button>
+
+                {/* Row 4: Save / Cancel */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => {
+                    // Save requires both row 1 and row 2 chosen
+                    if (shotDetail.onTarget === null || shotDetail.insideBox === null) return;
+                    if (eventTeam === "away") {
+                      applyAwayShot(shotDetail);
+                      setEventStep(null); setEventTeam(null); setEventStat(null); setShotDetail(null);
+                    } else {
+                      // Home: go pick the player next
+                      setEventStat("shot");
+                      setEventStep("player");
+                    }
+                  }} disabled={shotDetail.onTarget === null || shotDetail.insideBox === null} style={{
+                    flex: 1, padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14,
+                    cursor: (shotDetail.onTarget === null || shotDetail.insideBox === null) ? "default" : "pointer",
+                    opacity: (shotDetail.onTarget === null || shotDetail.insideBox === null) ? 0.4 : 1,
+                    border: "none", background: ACCENT, color: "#0d1f15"
+                  }}>Save</button>
+                  <button onClick={() => { setEventStep("stat"); setShotDetail(null); }} style={{
+                    flex: 1, padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: "pointer",
+                    border: "1px solid #333", background: "#1a1a1a", color: "#888"
+                  }}>Cancel</button>
+                </div>
+              </>
+            )}
+
             {/* STEP 3 — pick player (home only) */}
             {eventStep === "player" && (
               <>
                 <div style={{ textAlign: "center", fontFamily: "'Impact',sans-serif", color: ACCENT, fontSize: 20, letterSpacing: 3, marginBottom: 4 }}>SELECT PLAYER</div>
                 <div style={{ textAlign: "center", color: "#888", fontSize: 12, marginBottom: 14 }}>
-                  {HOME_STATS.find(s => s.key === eventStat)?.label}
+                  {eventStat === "shot"
+                    ? `🦶 Shot — ${shotDetail?.onTarget ? "On" : "Off"} / ${shotDetail?.insideBox ? "In Box" : "Out Box"}${shotDetail?.goal ? " / GOAL" : ""}`
+                    : HOME_STATS.find(s => s.key === eventStat)?.label}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
                   {homePlayers.filter(p => onPitchIds.has(p.id)).map(p => (
                     <button key={p.id} onClick={() => {
-                      incPlayer(p.id, eventStat);
-                      setEventStep(null); setEventTeam(null); setEventStat(null);
+                      if (eventStat === "shot" && shotDetail) {
+                        applyHomeShot(p.id, shotDetail);
+                      } else {
+                        incPlayer(p.id, eventStat);
+                      }
+                      setEventStep(null); setEventTeam(null); setEventStat(null); setShotDetail(null);
                     }} style={{
                       background: "#0e2218", color: p.role === "gk" ? GOLD : "#e8f5ee",
                       border: `1px solid ${BORDER}`, borderRadius: 7,
@@ -1073,7 +1204,7 @@ function App() {
                       {p.name || (p.role === "gk" ? "GK" : `Player ${p.number}`)}
                     </button>
                   ))}
-                  <button onClick={() => { setEventStep("stat"); }} style={{
+                  <button onClick={() => { setEventStep(eventStat === "shot" ? "shot" : "stat"); }} style={{
                     background: "#1a1a1a", color: "#666", border: "1px solid #333",
                     borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 13, cursor: "pointer", marginTop: 4
                   }}>← Back</button>
