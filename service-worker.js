@@ -1,4 +1,4 @@
-const CACHE_NAME = 'game-day-v12';
+const CACHE_NAME = 'game-day-v13';
 
 const ASSETS = [
   './',

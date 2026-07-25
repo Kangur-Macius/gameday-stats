@@ -2,39 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#8fd694" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Game Day" />
+  <meta name="theme-color" content="#8fd694" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
   <title>Game Day — Bentleigh Greens FC</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body, #root { height: 100%; }
-    body { background: #0d1f15; font-family: 'Segoe UI', sans-serif; }
-    input, button, select { font-family: inherit; }
-    select option { background: #0a1a0f; color: #fff; }
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #0d1f15; overscroll-behavior: none; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    #root { min-height: 100vh; }
     @media print {
-      body { background: #fff !important; color: #000 !important; }
       .no-print { display: none !important; }
-      .print-section { page-break-inside: avoid; }
+      body { background: #fff; }
+      .print-section { break-inside: avoid; }
     }
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef } = React;
 
 const GK_NAMES = ["", "Yianni", "Luka", "Harry", "Kai", "Konnor"];
 const OUTFIELD_NAMES = [
   "", "Akoch", "Alex", "Andreas", "Ante", "Ben", "Brady", "Bryn", "Deng", "Dom", "Hamish",
-  "Hudson", "Huss", "Jack", "Jamie", "Jimmy", "Johnny", "Kaz", "Kirk", "Mani", "Michael", "Nathan", "Nicky",
+  "Hudson", "Huss", "Jack", "Jamie", "Jimmy", "Johnny", "Kaz", "Kirk", "Luke", "Mani", "Michael", "Nathan", "Nicky",
   "Novak", "Raph", "Roger", "Sam G", "Sam S", "Sarp", "Will", "Zion", "Other"
 ];
 
@@ -383,7 +382,7 @@ function SettingsPage({ homePlayers, setHomePlayers, homeTeamName, setHomeTeamNa
   );
 }
 
-function ReportPage({ homePlayers, homeTeamName, awayTeamName, homeFormation, awayFormation, isHomeGame, homeTeam, awayTeam, subs, onClose }) {
+function ReportPage({ homePlayers, homeTeamName, awayTeamName, homeFormation, awayFormation, isHomeGame, homeTeam, awayTeam, subs, shotMap, onClose }) {
   const starters = homePlayers.slice(0, 11);
   const bench    = homePlayers.slice(11, 17);
 
@@ -586,6 +585,50 @@ function ReportPage({ homePlayers, homeTeamName, awayTeamName, homeFormation, aw
           }
         </div>
 
+        {/* SHOT MAP */}
+        <div className="print-section" style={{ background: CARD_BG, borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: `1px solid ${BORDER}` }}>
+          {sectionHeader("🎯 Shot Map — " + homeTeamName)}
+          {(!shotMap || shotMap.length === 0)
+            ? <div style={{ color: "#555", fontSize: 13 }}>No shot locations recorded.</div>
+            : (
+              <>
+                {/* Legend */}
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 10, fontSize: 11 }}>
+                  <span style={{ color: ACCENT }}>● Goal</span>
+                  <span style={{ color: "#5dade2" }}>● On Target</span>
+                  <span style={{ color: "#8e99a4" }}>● Off Target</span>
+                </div>
+                {/* Diagram */}
+                <div style={{
+                  position: "relative", width: "100%", height: 240,
+                  background: "linear-gradient(#0e2a1a, #0a1f13)", borderRadius: 8,
+                  border: `1px solid ${BORDER}`, overflow: "hidden"
+                }}>
+                  <div style={{ position: "absolute", top: 4, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#556", letterSpacing: 1 }}>OFF TARGET AREA</div>
+                  <svg viewBox="0 0 100 60" preserveAspectRatio="none" style={{ position: "absolute", left: "10%", top: "30%", width: "80%", height: "58%" }}>
+                    <rect x="2" y="2" width="96" height="52" fill="rgba(255,255,255,0.04)" stroke="#e8f5ee" strokeWidth="1.5"/>
+                    {[20,40,60,80].map(gx => <line key={"v"+gx} x1={gx} y1="2" x2={gx} y2="54" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"/>)}
+                    {[16,30,44].map(gy => <line key={"h"+gy} x1="2" y1={gy} x2="98" y2={gy} stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"/>)}
+                  </svg>
+                  {/* Dots */}
+                  {shotMap.map((sh, i) => (
+                    <div key={i} title={sh.playerName} style={{
+                      position: "absolute",
+                      left: `calc(${sh.x}% - 5px)`, top: `calc(${sh.y}% - 5px)`,
+                      width: 10, height: 10, borderRadius: "50%",
+                      background: sh.outcome === "goal" ? ACCENT : sh.outcome === "on" ? "#5dade2" : "#8e99a4",
+                      border: "1.5px solid #0a1f13", boxShadow: "0 0 3px rgba(0,0,0,0.6)"
+                    }} />
+                  ))}
+                </div>
+                <div style={{ textAlign: "center", fontSize: 11, color: "#7ab890", marginTop: 8 }}>
+                  {shotMap.length} shot{shotMap.length !== 1 ? "s" : ""} plotted
+                </div>
+              </>
+            )
+          }
+        </div>
+
         {/* AWAY TEAM STATS */}
         <div className="print-section" style={{ background: "#1a1a0d", borderRadius: 10, padding: "12px 14px", marginBottom: 14, border: "1px solid #3a3a1a" }}>
           {sectionHeader(`${awayTeamName} — Team Stats`)}
@@ -766,6 +809,8 @@ function App() {
   const [eventTeam, setEventTeam] = useState(null); // "home" | "away"
   const [eventStat, setEventStat] = useState(null); // e.g. "goals"
   const [shotDetail, setShotDetail] = useState(null); // { onTarget: bool|null, insideBox: bool|null, goal: bool }
+  const [shotMap, setShotMap] = useState([]); // [{ x, y, outcome, playerId, playerName }]
+  const [pendingShot, setPendingShot] = useState(null); // { playerId, playerName, detail } awaiting goal-map tap
   const [half, setHalf] = useState("pre"); // "pre" | "h1running" | "h1ended" | "h2running" | "full_time"
   const [homeTeamName, setHomeTeamName] = useState("Bentleigh Greens");
   const [awayTeamName, setAwayTeamName] = useState("Away Team");
@@ -968,6 +1013,7 @@ function App() {
         homeTeam={homeTeam}
         awayTeam={awayTeam}
         subs={subs}
+        shotMap={shotMap}
         onClose={() => setPage("match")}
       />
     );
@@ -985,7 +1031,7 @@ function App() {
       {showResetConfirm && (
         <ConfirmDialog
           message="This will reset the match timer to 00:00."
-          onConfirm={() => { setTimerRunning(false); setElapsed(0); setHalf("pre"); setShowResetConfirm(false); setSubs([]); setOnPitchIds(new Set(homePlayers.slice(0, 11).map(p => p.id))); }}
+          onConfirm={() => { setTimerRunning(false); setElapsed(0); setHalf("pre"); setShowResetConfirm(false); setSubs([]); setShotMap([]); setOnPitchIds(new Set(homePlayers.slice(0, 11).map(p => p.id))); }}
           onCancel={() => setShowResetConfirm(false)}
         />
       )}
@@ -1191,10 +1237,20 @@ function App() {
                     <button key={p.id} onClick={() => {
                       if (eventStat === "shot" && shotDetail) {
                         applyHomeShot(p.id, shotDetail);
+                        // Determine outcome for the map dot
+                        const outcome = (shotDetail.goal && shotDetail.onTarget)
+                          ? "goal"
+                          : (shotDetail.onTarget ? "on" : "off");
+                        setPendingShot({
+                          playerId: p.id,
+                          playerName: p.name || `Player ${p.number}`,
+                          outcome
+                        });
+                        setEventStep("goalmap");
                       } else {
                         incPlayer(p.id, eventStat);
+                        setEventStep(null); setEventTeam(null); setEventStat(null); setShotDetail(null);
                       }
-                      setEventStep(null); setEventTeam(null); setEventStat(null); setShotDetail(null);
                     }} style={{
                       background: "#0e2218", color: p.role === "gk" ? GOLD : "#e8f5ee",
                       border: `1px solid ${BORDER}`, borderRadius: 7,
@@ -1210,6 +1266,62 @@ function App() {
                     borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 13, cursor: "pointer", marginTop: 4
                   }}>← Back</button>
                 </div>
+              </>
+            )}
+
+            {/* STEP 4 — goal map (Bentleigh shots only) */}
+            {eventStep === "goalmap" && pendingShot && (
+              <>
+                <div style={{ textAlign: "center", fontFamily: "'Impact',sans-serif", color: ACCENT, fontSize: 20, letterSpacing: 3, marginBottom: 4 }}>SHOT LOCATION</div>
+                <div style={{ textAlign: "center", color: "#888", fontSize: 12, marginBottom: 4 }}>
+                  {pendingShot.playerName} — tap where the shot went
+                </div>
+                <div style={{ textAlign: "center", fontSize: 11, marginBottom: 12 }}>
+                  <span style={{ color: pendingShot.outcome === "goal" ? ACCENT : pendingShot.outcome === "on" ? "#5dade2" : "#8e99a4", fontWeight: 700 }}>
+                    {pendingShot.outcome === "goal" ? "⚽ GOAL" : pendingShot.outcome === "on" ? "ON TARGET" : "OFF TARGET"}
+                  </span>
+                </div>
+
+                {/* Tappable goal + surrounding area */}
+                <div
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = ((e.clientX - rect.left) / rect.width) * 100;
+                    const y = ((e.clientY - rect.top) / rect.height) * 100;
+                    setShotMap(prev => [...prev, {
+                      x, y,
+                      outcome: pendingShot.outcome,
+                      playerId: pendingShot.playerId,
+                      playerName: pendingShot.playerName
+                    }]);
+                    setEventStep(null); setEventTeam(null); setEventStat(null); setShotDetail(null); setPendingShot(null);
+                  }}
+                  style={{
+                    position: "relative", width: "100%", height: 200, cursor: "crosshair",
+                    background: "linear-gradient(#0e2a1a, #0a1f13)", borderRadius: 8,
+                    border: `1px solid ${BORDER}`, overflow: "hidden"
+                  }}
+                >
+                  {/* Off-target zone label */}
+                  <div style={{ position: "absolute", top: 4, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#556", letterSpacing: 1 }}>OFF TARGET AREA</div>
+                  {/* Goal frame */}
+                  <svg viewBox="0 0 100 60" preserveAspectRatio="none" style={{ position: "absolute", left: "10%", top: "30%", width: "80%", height: "58%" }}>
+                    {/* net */}
+                    <rect x="2" y="2" width="96" height="52" fill="rgba(255,255,255,0.04)" stroke="#e8f5ee" strokeWidth="1.5"/>
+                    {/* net lines */}
+                    {[20,40,60,80].map(gx => <line key={"v"+gx} x1={gx} y1="2" x2={gx} y2="54" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"/>)}
+                    {[16,30,44].map(gy => <line key={"h"+gy} x1="2" y1={gy} x2="98" y2={gy} stroke="rgba(255,255,255,0.15)" strokeWidth="0.5"/>)}
+                  </svg>
+                  <div style={{ position: "absolute", bottom: 4, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#7ab890", letterSpacing: 1 }}>▲ GOAL — tap inside frame or outside for off-target ▲</div>
+                </div>
+
+                <button onClick={() => {
+                  // Skip location — still keep the shot recorded, just no map dot
+                  setEventStep(null); setEventTeam(null); setEventStat(null); setShotDetail(null); setPendingShot(null);
+                }} style={{
+                  marginTop: 10, width: "100%", background: "#1a1a1a", color: "#888",
+                  border: "1px solid #333", borderRadius: 8, padding: "9px 0", fontWeight: 700, fontSize: 13, cursor: "pointer"
+                }}>Skip location</button>
               </>
             )}
           </div>
